@@ -64,7 +64,7 @@ def download_data(
         
         # 创建客户端
         with KlineClient() as client:
-            # 创建进度条
+            # 创建进度条（初始隐藏，等检测到缺失范围后才显示）
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
@@ -74,27 +74,44 @@ def download_data(
                 TextColumn("[cyan]{task.fields[downloaded]:,}/{task.fields[total_records]:,}[/cyan] 条"),
                 console=console,
             ) as progress:
-                task_id = progress.add_task("下载中...", total=100, downloaded=0, total_records=0)
+                task_id = progress.add_task("下载中...", total=100, downloaded=0, total_records=0, visible=False)
+                progress_stopped = False
                 
                 # 定义进度回调
                 def update_progress(percentage: float, downloaded_records: int, total_records: int):
+                    # 如果进度已停止，不再更新
+                    if progress_stopped:
+                        return
+                    # 首次调用时显示进度条
+                    if not progress.tasks[task_id].visible:
+                        progress.update(task_id, visible=True)
                     progress.update(task_id, completed=percentage, downloaded=downloaded_records, total_records=total_records)
                 
-                # 下载数据
-                result = client.download(
-                    symbol=symbol,
-                    exchange=exchange,
-                    start_time=start_time,
-                    end_time=end_time,
-                    force=force,
-                    progress_callback=update_progress,
-                )
+                try:
+                    # 下载数据
+                    result = client.download(
+                        symbol=symbol,
+                        exchange=exchange,
+                        start_time=start_time,
+                        end_time=end_time,
+                        force=force,
+                        progress_callback=update_progress,
+                    )
+                except KeyboardInterrupt:
+                    # 用户中断时立即停止进度更新
+                    progress_stopped = True
+                    progress.stop()
+                    raise
             
             # 显示结果
             console.print(f"\n[green]✓[/green] 下载完成!")
             console.print(f"数据量: [bold]{result.get('count', 0):,}[/bold] 条")
             console.print(f"时间范围: {result.get('start')} 到 {result.get('end')}")
             
+    except KeyboardInterrupt:
+        # KeyboardInterrupt 特殊处理，避免显示为错误
+        console.print(f"\n已取消")
+        raise typer.Exit(0)
     except Exception as e:
         console.print(f"[red]✗ 错误:[/red] {e}")
         raise typer.Exit(1)

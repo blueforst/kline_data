@@ -199,7 +199,8 @@ def _resume_task(task, metadata_mgr, config):
             config=config,
         )
         
-        # 恢复下载
+        # 恢复下载 - 在 download_range 内部会先打印缺失范围信息，然后才开始下载
+        # 进度回调会在实际下载开始后才被调用
         from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
         with Progress(
             SpinnerColumn(),
@@ -210,23 +211,40 @@ def _resume_task(task, metadata_mgr, config):
             TextColumn("[cyan]{task.fields[downloaded]:,}/{task.fields[total_records]:,}[/cyan] 条"),
             console=console,
         ) as progress:
-            progress_task = progress.add_task("下载中...", total=100, downloaded=0, total_records=0)
+            progress_task = progress.add_task("下载中...", total=100, downloaded=0, total_records=0, visible=False)
+            progress_stopped = False
             
             def update_progress(percentage: float, downloaded_records: int, total_records: int):
+                # 如果进度已停止，不再更新
+                if progress_stopped:
+                    return
+                # 首次调用时显示进度条
+                if not progress.tasks[progress_task].visible:
+                    progress.update(progress_task, visible=True)
                 progress.update(progress_task, completed=percentage, downloaded=downloaded_records, total_records=total_records)
             
             downloader.progress_callback = update_progress
             
-            # 执行下载
-            downloader.download_range(
-                start_time=start_time,
-                end_time=end_time,
-                checkpoint=checkpoint,
-                task_id=task.task_id,
-            )
+            try:
+                # 执行下载
+                downloader.download_range(
+                    start_time=start_time,
+                    end_time=end_time,
+                    checkpoint=checkpoint,
+                    task_id=task.task_id,
+                )
+            except KeyboardInterrupt:
+                # 用户中断时立即停止进度更新
+                progress_stopped = True
+                progress.stop()
+                raise
         
         console.print(f"\n[green]✓[/green] 任务恢复完成!")
         
+    except KeyboardInterrupt:
+        # KeyboardInterrupt 特殊处理，避免显示为错误
+        console.print(f"\n已取消")
+        raise typer.Exit(0)
     except Exception as e:
         console.print(f"[red]✗ 恢复失败:[/red] {e}")
         raise typer.Exit(1)
