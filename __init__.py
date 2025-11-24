@@ -47,8 +47,19 @@ from reader import (
 from resampler import (
     KlineResampler,
     SmartResampler,
-    Timeframe,
     TimeframeConverter,
+)
+
+# 全局常量（从utils.constants导入）
+from utils.constants import (
+    Timeframe,
+    TIMEFRAME_SECONDS,
+    TIMEFRAME_TO_PANDAS,
+    SUPPORTED_EXCHANGES,
+    DEFAULT_EXCHANGE,
+    DEFAULT_SYMBOL,
+    COMMON_INTERVALS,
+    OHLCV_COLUMNS,
 )
 
 # 指标层
@@ -109,8 +120,17 @@ __all__ = [
     # Resampler
     'KlineResampler',
     'SmartResampler',
-    'Timeframe',
     'TimeframeConverter',
+    
+    # Constants (from utils.constants)
+    'Timeframe',
+    'TIMEFRAME_SECONDS',
+    'TIMEFRAME_TO_PANDAS',
+    'SUPPORTED_EXCHANGES',
+    'DEFAULT_EXCHANGE',
+    'DEFAULT_SYMBOL',
+    'COMMON_INTERVALS',
+    'OHLCV_COLUMNS',
     
     # Indicators
     'IndicatorManager',

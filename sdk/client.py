@@ -177,6 +177,92 @@ class KlineClient:
         
         return df
     
+    def get_klines_before(
+        self,
+        exchange: str,
+        symbol: str,
+        before_time: datetime,
+        interval: str = '1d',
+        limit: int = 100,
+        with_indicators: Optional[List[str]] = None
+    ) -> pd.DataFrame:
+        """
+        获取指定时间前n条K线数据（使用timezone处理时间）
+        
+        Args:
+            exchange: 交易所
+            symbol: 交易对
+            before_time: 截止时间（不包含此时间点的K线）
+            interval: 时间周期（如 '1m', '5m', '1h', '1d', '1w'）
+            limit: 数量限制（获取多少条K线）
+            with_indicators: 附加计算的指标列表
+            
+        Returns:
+            pd.DataFrame: K线数据，按时间升序排列
+            
+        Example:
+            >>> from datetime import datetime
+            >>> from utils.timezone import to_utc
+            >>> 
+            >>> # 获取2024年1月1日前100条日线数据
+            >>> df = client.get_klines_before(
+            ...     'binance', 'BTC/USDT',
+            ...     datetime(2024, 1, 1),
+            ...     interval='1d',
+            ...     limit=100
+            ... )
+            >>> 
+            >>> # 获取指定UTC时间前50条小时线，并计算指标
+            >>> before_time = to_utc(datetime(2024, 6, 15, 12, 0, 0))
+            >>> df = client.get_klines_before(
+            ...     'binance', 'BTC/USDT',
+            ...     before_time,
+            ...     interval='1h',
+            ...     limit=50,
+            ...     with_indicators=['MA_20', 'RSI_14']
+            ... )
+        """
+        from resampler.timeframe import get_timeframe_seconds
+        from utils.timezone import to_utc, datetime_to_timestamp
+        
+        # 确保时间为UTC
+        before_time = to_utc(before_time)
+        
+        # 获取周期的秒数
+        interval_seconds = get_timeframe_seconds(interval)
+        
+        # 计算开始时间（向前推limit个周期，再多取一些以确保足够）
+        # 额外多取20%的数据，以防数据不连续
+        buffer_multiplier = 1.2
+        lookback_seconds = int(limit * interval_seconds * buffer_multiplier)
+        start_timestamp = datetime_to_timestamp(before_time) - (lookback_seconds * 1000)
+        
+        from utils.timezone import timestamp_to_datetime
+        start_time = timestamp_to_datetime(start_timestamp)
+        
+        # 获取数据
+        df = self.get_kline(
+            exchange, symbol, start_time, before_time, interval,
+            with_indicators=None  # 先不计算指标，过滤后再计算
+        )
+        
+        if df.empty:
+            return df
+        
+        # 过滤掉大于等于before_time的数据
+        before_timestamp = datetime_to_timestamp(before_time)
+        df = df[df['timestamp'] < before_timestamp]
+        
+        # 取最后limit条数据
+        if len(df) > limit:
+            df = df.tail(limit)
+        
+        # 计算指标
+        if with_indicators and not df.empty:
+            df = self._calculate_indicators(df, with_indicators)
+        
+        return df
+    
     # ==================== 数据下载管理 ====================
     
     def download(

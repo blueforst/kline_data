@@ -65,37 +65,68 @@ ccxt:
 ### 2. 使用Python SDK
 
 ```python
-from kline_data import KlineDataClient
+from sdk import KlineClient
 from datetime import datetime
 
 # 初始化客户端
-client = KlineDataClient('config/config.yaml')
+client = KlineClient()
 
 # 下载数据
-task_id = client.download(
+result = client.download(
     exchange='binance',
     symbol='BTC/USDT',
     start_time=datetime(2024, 1, 1),
     end_time=datetime(2024, 12, 31)
 )
 
-# 查询数据（链式调用）
-df = (client
-      .query('binance', 'BTC/USDT')
-      .time_range(datetime(2024, 1, 1), datetime(2024, 1, 31))
-      .interval('1h')
-      .with_indicators('ma', 'ema', 'macd', 'rsi')
-      .execute())
+# 查询时间范围内的数据
+df = client.get_kline(
+    exchange='binance',
+    symbol='BTC/USDT',
+    start_time=datetime(2024, 1, 1),
+    end_time=datetime(2024, 1, 31),
+    interval='1h',
+    with_indicators=['MA_20', 'EMA_12', 'RSI_14']
+)
 
 print(df.head())
 
-# 导出数据
-(client
- .query('binance', 'BTC/USDT')
- .time_range(datetime(2024, 1, 1), datetime(2024, 1, 31))
- .interval('1d')
- .to_csv('btc_daily.csv'))
+# 获取最新的N条K线
+df = client.get_latest(
+    exchange='binance',
+    symbol='BTC/USDT',
+    interval='1d',
+    limit=100
+)
+
+# 🆕 获取指定时间前的N条K线（使用timezone处理）
+from utils.timezone import to_utc
+
+df = client.get_klines_before(
+    exchange='binance',
+    symbol='BTC/USDT',
+    before_time=datetime(2024, 1, 1),  # 或使用 to_utc(datetime(...))
+    interval='1d',
+    limit=100,
+    with_indicators=['MA_20', 'RSI_14']
+)
+
+# 数据重采样
+df = client.resample(
+    exchange='binance',
+    symbol='BTC/USDT',
+    start_time=datetime(2024, 1, 1),
+    end_time=datetime(2024, 1, 31),
+    source_interval='1s',
+    target_interval='1h'
+)
 ```
+
+**新功能亮点**：`get_klines_before()` 接口
+- 获取指定时间前n条K线，适用于回测和策略开发
+- 使用 `utils.timezone` 模块确保时区正确性
+- 自动过滤数据，返回严格在指定时间之前的K线
+- 详细文档见：[get_klines_before API文档](docs/get_klines_before_api.md)
 
 ### 3. 使用CLI
 
@@ -199,6 +230,7 @@ API文档：http://localhost:8000/docs
 - [数据获取策略](docs/data_fetching_strategy.md) - 智能数据获取策略详解
 - [CLI使用指南](docs/cli_guide.md) - 命令行工具完整指南
 - [项目总结](docs/project_summary.md) - 项目概览和实现细节
+- [时间周期使用指南](docs/timeframe_usage.md) - 🆕 全局时间周期枚举使用说明
 
 ## 🏗️ 项目结构
 

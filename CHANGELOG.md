@@ -4,6 +4,82 @@
 
 ## [Unreleased]
 
+### ✨ 新增 get_klines_before 接口 (2024-11-24)
+
+#### 新功能
+- **SDK新增方法**: `KlineClient.get_klines_before()`
+  - 获取指定时间前n条K线数据
+  - 使用 `utils.timezone` 模块处理时间，确保时区一致性
+  - 支持任意时间周期（1m, 5m, 1h, 1d, 1w等）
+  - 支持技术指标计算
+  - 返回数据按时间升序排列
+  
+- **时间处理特性**:
+  - 自动将输入时间转换为UTC
+  - 精确过滤：返回的K线时间戳严格小于指定时间
+  - 智能缓冲：自动多查询20%数据以应对数据缺失
+  
+- **参数说明**:
+  ```python
+  def get_klines_before(
+      exchange: str,          # 交易所
+      symbol: str,            # 交易对
+      before_time: datetime,  # 截止时间（不包含）
+      interval: str = '1d',   # 时间周期
+      limit: int = 100,       # 数量限制
+      with_indicators: Optional[List[str]] = None  # 技术指标
+  ) -> pd.DataFrame
+  ```
+
+#### 使用示例
+```python
+from datetime import datetime
+from sdk import KlineClient
+from utils.timezone import to_utc
+
+client = KlineClient()
+
+# 获取2024年1月1日前100条日线
+df = client.get_klines_before(
+    exchange='binance',
+    symbol='BTC/USDT',
+    before_time=datetime(2024, 1, 1),
+    interval='1d',
+    limit=100
+)
+
+# 使用UTC时间获取数据并计算指标
+before_time = to_utc(datetime(2024, 6, 15, 12, 0, 0))
+df = client.get_klines_before(
+    exchange='binance',
+    symbol='BTC/USDT',
+    before_time=before_time,
+    interval='1h',
+    limit=50,
+    with_indicators=['MA_20', 'RSI_14']
+)
+```
+
+#### 相关文档
+- 新增文档: `docs/get_klines_before_api.md` - 完整API文档
+- 新增示例: `examples/example_get_klines_before.py` - 详细使用示例
+- 新增示例: `examples/demo_get_klines_before.py` - 快速演示
+- 新增测试: `tests/test_get_klines_before.py` - 单元测试
+
+#### 影响的文件
+- `sdk/client.py` - 新增 `get_klines_before()` 方法
+- `docs/get_klines_before_api.md` - API文档
+- `examples/example_get_klines_before.py` - 示例代码
+- `examples/demo_get_klines_before.py` - 演示代码
+- `tests/test_get_klines_before.py` - 单元测试
+
+#### 优势
+- **时区安全**: 使用timezone模块确保时间处理的正确性
+- **灵活性**: 支持任意时间点和时间周期
+- **性能**: 自动选择最优数据获取策略
+- **易用性**: 简洁的API接口，符合直觉
+- **可测试**: 完整的单元测试覆盖
+
 ### ✨ 自动检测最早可用时间功能 (2024-11-23)
 
 #### 新功能

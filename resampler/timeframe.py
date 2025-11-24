@@ -1,112 +1,22 @@
-"""时间周期定义和转换"""
+"""时间周期定义和转换
+
+注意：本模块保留用于向后兼容。新代码应使用 utils.constants 模块中的定义。
+
+推荐导入方式：
+    from utils.constants import Timeframe, TIMEFRAME_SECONDS, TIMEFRAME_TO_PANDAS
+"""
 
 from enum import Enum
 from typing import Dict, Optional
 from datetime import timedelta
 
-
-class Timeframe(Enum):
-    """时间周期枚举"""
-    
-    # 秒级
-    S1 = '1s'
-    S5 = '5s'
-    S15 = '15s'
-    S30 = '30s'
-    
-    # 分钟级
-    M1 = '1m'
-    M3 = '3m'
-    M5 = '5m'
-    M15 = '15m'
-    M30 = '30m'
-    
-    # 小时级
-    H1 = '1h'
-    H2 = '2h'
-    H4 = '4h'
-    H6 = '6h'
-    H8 = '8h'
-    H12 = '12h'
-    
-    # 天级
-    D1 = '1d'
-    
-    # 周级
-    W1 = '1w'
-    
-    # 月级
-    MO1 = '1M'
-    
-    @property
-    def seconds(self) -> int:
-        """获取周期对应的秒数"""
-        return TIMEFRAME_SECONDS[self.value]
-    
-    @property
-    def pandas_freq(self) -> str:
-        """获取pandas的频率字符串"""
-        return TIMEFRAME_TO_PANDAS[self.value]
-    
-    @classmethod
-    def from_string(cls, s: str) -> 'Timeframe':
-        """从字符串创建"""
-        for tf in cls:
-            if tf.value == s:
-                return tf
-        raise ValueError(f"Invalid timeframe: {s}")
-    
-    def is_valid_resample_from(self, source: 'Timeframe') -> bool:
-        """检查是否可以从source重采样到当前周期"""
-        return self.seconds >= source.seconds and self.seconds % source.seconds == 0
-
-
-# 时间周期到秒数的映射
-TIMEFRAME_SECONDS: Dict[str, int] = {
-    '1s': 1,
-    '5s': 5,
-    '15s': 15,
-    '30s': 30,
-    '1m': 60,
-    '3m': 180,
-    '5m': 300,
-    '15m': 900,
-    '30m': 1800,
-    '1h': 3600,
-    '2h': 7200,
-    '4h': 14400,
-    '6h': 21600,
-    '8h': 28800,
-    '12h': 43200,
-    '1d': 86400,
-    '1w': 604800,
-    '1M': 2592000,  # 30天近似
-}
-
-# 时间周期到pandas频率的映射
-TIMEFRAME_TO_PANDAS: Dict[str, str] = {
-    '1s': '1s',
-    '5s': '5s',
-    '15s': '15s',
-    '30s': '30s',
-    '1m': '1min',
-    '3m': '3min',
-    '5m': '5min',
-    '15m': '15min',
-    '30m': '30min',
-    '1h': '1h',
-    '2h': '2h',
-    '4h': '4h',
-    '6h': '6h',
-    '8h': '8h',
-    '12h': '12h',
-    '1d': '1D',
-    '1w': '1W',
-    '1M': '1M',
-}
-
-# pandas频率到时间周期的映射
-PANDAS_TO_TIMEFRAME: Dict[str, str] = {v: k for k, v in TIMEFRAME_TO_PANDAS.items()}
+# 从统一常量模块导入
+from utils.constants import (
+    Timeframe,
+    TIMEFRAME_SECONDS,
+    TIMEFRAME_TO_PANDAS,
+    PANDAS_TO_TIMEFRAME,
+)
 
 
 def get_timeframe_seconds(timeframe: str) -> int:
