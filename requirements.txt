@@ -1,0 +1,42 @@
+# Core dependencies
+pydantic>=2.5.0
+pyyaml>=6.0
+python-dateutil>=2.8.2
+
+# Data processing
+pandas>=2.1.0
+polars>=0.19.0
+pyarrow>=14.0.0
+numpy>=1.24.0
+
+# CCXT for exchange data
+ccxt>=4.1.0
+
+# Storage
+fastparquet>=2023.10.0
+
+# Technical indicators
+ta-lib>=0.4.28
+# pandas-ta is optional - install manually if needed: pip install git+https://github.com/twopirllc/pandas-ta.git
+# pandas-ta @ git+https://github.com/twopirllc/pandas-ta.git
+
+# API
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic-settings>=2.1.0
+
+# CLI
+click>=8.1.0
+typer>=0.9.0
+rich>=13.7.0
+inquirer>=3.4.0
+
+# Utils
+python-dotenv>=1.0.0
+tenacity>=8.2.0  # For retry logic
+aiofiles>=23.2.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
