@@ -2,7 +2,7 @@
 """
 数据完整性验证示例
 
-演示如何使用SDK验证和检查K线数据的完整性、质量
+演示如何使用SDK验证和检查K线数据的完整性、质量（使用全局常量）
 """
 from sdk import KlineClient
 from storage.validator import DataValidator
@@ -11,36 +11,70 @@ from config import get_config
 from rich.console import Console
 from rich.table import Table
 
+# 导入全局常量
+from utils.constants import (
+    Timeframe,
+    DEFAULT_EXCHANGE,
+    DEFAULT_SYMBOL,
+    SUPPORTED_EXCHANGES,
+    OHLCV_COLUMNS,
+    DEFAULT_SOURCE_INTERVAL,
+    MIN_DATA_COMPLETENESS,
+    MAX_DUPLICATE_RATE,
+    VALIDATION_METHODS,
+    VALIDATION_STATUS,
+    validate_timeframe,
+    validate_exchange,
+    validate_symbol,
+)
+
 console = Console()
 
 
 def example_1_check_completeness():
-    """示例1: 检查数据完整性"""
-    console.print("\n[bold cyan]示例1: 检查数据完整性[/bold cyan]")
-    
+    """示例1: 检查数据完整性（使用全局常量）"""
+    console.print("\n[bold cyan]示例1: 检查数据完整性（使用常量）[/bold cyan]")
+
+    # 使用全局常量
+    symbol = DEFAULT_SYMBOL
+    timeframe = DEFAULT_SOURCE_INTERVAL  # 使用默认源周期
+
+    # 验证常量
+    validate_exchange(DEFAULT_EXCHANGE)
+    validate_symbol(symbol)
+    validate_timeframe(timeframe)
+
+    console.print(f"🔍 验证配置:")
+    console.print(f"  交易所: {DEFAULT_EXCHANGE}")
+    console.print(f"  交易对: {symbol}")
+    console.print(f"  周期: {timeframe}")
+    console.print(f"  OHLCV字段: {OHLCV_COLUMNS}")
+    console.print(f"  完整性阈值: {MIN_DATA_COMPLETENESS*100:.1f}%")
+
     with KlineClient() as client:
-        # 读取数据
-        symbol = "BTC/USDT"
-        timeframe = "1s"
-        
-        console.print(f"读取 {symbol} 的 {timeframe} 数据...")
+        console.print(f"\n📊 读取 {symbol} 的 {timeframe} 数据...")
         df = client.get_kline(
             symbol=symbol,
-            exchange="binance",
+            exchange=DEFAULT_EXCHANGE,  # 使用常量
             timeframe=timeframe,
         )
-        
+
         if df.empty:
             console.print("[yellow]未找到数据[/yellow]")
             return
-        
+
         # 检查完整性
         completeness, missing_ranges = DataValidator.check_completeness(df, timeframe)
-        
-        console.print(f"\n数据量: [bold]{len(df):,}[/bold] 条")
-        console.print(f"完整性: [bold]{completeness*100:.2f}%[/bold]")
-        console.print(f"缺失段数: [bold]{len(missing_ranges)}[/bold] 个")
-        
+
+        console.print(f"\n📈 数据量: [bold]{len(df):,}[/bold] 条")
+        console.print(f"✅ 完整性: [bold]{completeness*100:.2f}%[/bold]")
+        if completeness >= MIN_DATA_COMPLETENESS:
+            console.print(f"[green]✓ 通过完整性检查 (≥{MIN_DATA_COMPLETENESS*100:.1f}%)[/green]")
+        else:
+            console.print(f"[red]✗ 未通过完整性检查 (<{MIN_DATA_COMPLETENESS*100:.1f}%)[/red]")
+
+        console.print(f"⚠️  缺失段数: [bold]{len(missing_ranges)}[/bold] 个")
+
         # 显示前5个缺失段
         if missing_ranges:
             console.print("\n[yellow]前5个缺失数据段:[/yellow]")
@@ -49,7 +83,7 @@ def example_1_check_completeness():
             table.add_column("起始时间", style="cyan")
             table.add_column("结束时间", style="cyan")
             table.add_column("间隔", style="red")
-            
+
             for idx, gap in enumerate(missing_ranges[:5], 1):
                 table.add_row(
                     str(idx),
@@ -57,7 +91,7 @@ def example_1_check_completeness():
                     str(gap.end),
                     str(gap.gap)
                 )
-            
+
             console.print(table)
 
 

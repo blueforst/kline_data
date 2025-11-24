@@ -6,6 +6,16 @@ from datetime import datetime, timedelta
 from sdk import KlineClient
 from utils.timezone import to_utc, datetime_to_timestamp, timestamp_to_datetime, now_utc
 
+# 导入全局常量
+from utils.constants import (
+    Timeframe,
+    DEFAULT_EXCHANGE,
+    DEFAULT_SYMBOL,
+    OHLCV_COLUMNS,
+    SUPPORTED_EXCHANGES,
+    TEST_SYMBOLS,
+)
+
 
 class TestGetKlinesBefore:
     """测试get_klines_before接口"""
@@ -20,10 +30,10 @@ class TestGetKlinesBefore:
         # 获取2024年1月1日前的10条日线
         before_time = datetime(2024, 1, 1)
         df = client.get_klines_before(
-            exchange='binance',
-            symbol='BTC/USDT',
+            exchange=DEFAULT_EXCHANGE,
+            symbol=DEFAULT_SYMBOL,
             before_time=before_time,
-            interval='1d',
+            interval=Timeframe.D1.value,
             limit=10
         )
         
@@ -43,8 +53,7 @@ class TestGetKlinesBefore:
             assert df['timestamp'].is_monotonic_increasing
             
             # 验证必要的列存在
-            required_columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
-            for col in required_columns:
+            for col in OHLCV_COLUMNS:
                 assert col in df.columns
     
     def test_with_utc_time(self, client):
@@ -52,10 +61,10 @@ class TestGetKlinesBefore:
         # 使用UTC时间
         before_time = to_utc(datetime(2024, 6, 15, 12, 0, 0))
         df = client.get_klines_before(
-            exchange='binance',
-            symbol='BTC/USDT',
+            exchange=DEFAULT_EXCHANGE,
+            symbol=DEFAULT_SYMBOL,
             before_time=before_time,
-            interval='1h',
+            interval=Timeframe.H1.value,
             limit=24
         )
         
@@ -71,12 +80,13 @@ class TestGetKlinesBefore:
     def test_different_intervals(self, client):
         """测试不同的时间周期"""
         before_time = datetime(2024, 2, 1)
-        intervals = ['1m', '5m', '15m', '1h', '4h', '1d']
-        
+        intervals = [Timeframe.M1.value, Timeframe.M5.value, Timeframe.M15.value,
+                     Timeframe.H1.value, Timeframe.H4.value, Timeframe.D1.value]
+
         for interval in intervals:
             df = client.get_klines_before(
-                exchange='binance',
-                symbol='BTC/USDT',
+                exchange=DEFAULT_EXCHANGE,
+                symbol=DEFAULT_SYMBOL,
                 before_time=before_time,
                 interval=interval,
                 limit=10
@@ -93,10 +103,10 @@ class TestGetKlinesBefore:
     def test_with_indicators(self, client):
         """测试附加指标计算"""
         df = client.get_klines_before(
-            exchange='binance',
-            symbol='BTC/USDT',
+            exchange=DEFAULT_EXCHANGE,
+            symbol=DEFAULT_SYMBOL,
             before_time=datetime(2024, 3, 1),
-            interval='1d',
+            interval=Timeframe.D1.value,
             limit=30,
             with_indicators=['MA_20', 'EMA_12', 'RSI_14']
         )
@@ -115,13 +125,13 @@ class TestGetKlinesBefore:
         """测试limit参数的限制"""
         limits = [5, 10, 50, 100]
         before_time = datetime(2024, 1, 1)
-        
+
         for limit in limits:
             df = client.get_klines_before(
-                exchange='binance',
-                symbol='BTC/USDT',
+                exchange=DEFAULT_EXCHANGE,
+                symbol=DEFAULT_SYMBOL,
                 before_time=before_time,
-                interval='1d',
+                interval=Timeframe.D1.value,
                 limit=limit
             )
             
@@ -133,10 +143,10 @@ class TestGetKlinesBefore:
         """测试时间过滤的正确性"""
         before_time = to_utc(datetime(2024, 1, 15))
         df = client.get_klines_before(
-            exchange='binance',
-            symbol='BTC/USDT',
+            exchange=DEFAULT_EXCHANGE,
+            symbol=DEFAULT_SYMBOL,
             before_time=before_time,
-            interval='1d',
+            interval=Timeframe.D1.value,
             limit=10
         )
         
@@ -158,10 +168,10 @@ class TestGetKlinesBefore:
         # 使用一个很早的时间，可能没有数据
         very_early_time = datetime(2010, 1, 1)
         df = client.get_klines_before(
-            exchange='binance',
-            symbol='BTC/USDT',
+            exchange=DEFAULT_EXCHANGE,
+            symbol=DEFAULT_SYMBOL,
             before_time=very_early_time,
-            interval='1d',
+            interval=Timeframe.D1.value,
             limit=10
         )
         
@@ -179,10 +189,10 @@ class TestGetKlinesBefore:
         # 获取当前时间前的数据
         current_time = now_utc()
         df = client.get_klines_before(
-            exchange='binance',
-            symbol='BTC/USDT',
+            exchange=DEFAULT_EXCHANGE,
+            symbol=DEFAULT_SYMBOL,
             before_time=current_time,
-            interval='1h',
+            interval=Timeframe.H1.value,
             limit=24
         )
         
@@ -197,20 +207,20 @@ class TestGetKlinesBefore:
         # 测试naive datetime和aware datetime的处理
         naive_dt = datetime(2024, 1, 1, 12, 0, 0)
         aware_dt = to_utc(datetime(2024, 1, 1, 12, 0, 0))
-        
+
         df1 = client.get_klines_before(
-            exchange='binance',
-            symbol='BTC/USDT',
+            exchange=DEFAULT_EXCHANGE,
+            symbol=DEFAULT_SYMBOL,
             before_time=naive_dt,
-            interval='1d',
+            interval=Timeframe.D1.value,
             limit=5
         )
-        
+
         df2 = client.get_klines_before(
-            exchange='binance',
-            symbol='BTC/USDT',
+            exchange=DEFAULT_EXCHANGE,
+            symbol=DEFAULT_SYMBOL,
             before_time=aware_dt,
-            interval='1d',
+            interval=Timeframe.D1.value,
             limit=5
         )
         
@@ -221,10 +231,10 @@ class TestGetKlinesBefore:
     def test_data_ordering(self, client):
         """测试数据排序"""
         df = client.get_klines_before(
-            exchange='binance',
-            symbol='BTC/USDT',
+            exchange=DEFAULT_EXCHANGE,
+            symbol=DEFAULT_SYMBOL,
             before_time=datetime(2024, 2, 1),
-            interval='1h',
+            interval=Timeframe.H1.value,
             limit=50
         )
         

@@ -1,4 +1,7 @@
-"""重采样层使用示例"""
+"""重采样层使用示例
+
+此示例已更新为使用统一的全局常量定义。
+"""
 
 import sys
 from pathlib import Path
@@ -9,6 +12,8 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from config import load_config
+
+# 导入更新后的resampler模块（现在使用utils.constants）
 from resampler import (
     Timeframe,
     TimeframeConverter,
@@ -16,7 +21,19 @@ from resampler import (
     can_resample,
     KlineResampler,
     SmartResampler,
+    OHLCV_AGGREGATION_RULES,
+    OHLCV_COLUMNS,
 )
+
+# 从常量模块导入验证函数（推荐使用方式）
+from utils.constants import (
+    SUPPORTED_EXCHANGES,
+    DEMO_SYMBOL,
+    DEFAULT_EXCHANGE,
+    validate_exchange,
+    validate_symbol,
+)
+
 import pandas as pd
 
 

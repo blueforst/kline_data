@@ -15,6 +15,14 @@ from storage import (
     TaskStatus,
 )
 
+# 导入全局常量
+from utils.constants import (
+    DEFAULT_EXCHANGE,
+    DEFAULT_SYMBOL,
+    TEST_SYMBOLS,
+    SUPPORTED_EXCHANGES,
+)
+
 
 class TestKlineData:
     """测试KlineData模型"""
@@ -222,8 +230,8 @@ class TestParquetWriter:
         
         partition_infos = writer.write_partitioned(
             sample_df,
-            'binance',
-            'BTC/USDT',
+            DEFAULT_EXCHANGE,
+            DEFAULT_SYMBOL,
             '1s'
         )
         
@@ -261,10 +269,10 @@ class TestMetadataManager:
         """测试创建空元数据"""
         mgr = MetadataManager(temp_config)
         
-        metadata = mgr.get_symbol_metadata('binance', 'BTC/USDT')
+        metadata = mgr.get_symbol_metadata(DEFAULT_EXCHANGE, DEFAULT_SYMBOL)
         
-        assert metadata.exchange == 'binance'
-        assert metadata.symbol == 'BTC/USDT'
+        assert metadata.exchange == DEFAULT_EXCHANGE
+        assert metadata.symbol == DEFAULT_SYMBOL
         assert metadata.base == 'BTC'
         assert metadata.quote == 'USDT'
     
@@ -272,11 +280,11 @@ class TestMetadataManager:
         """测试保存和加载元数据"""
         mgr = MetadataManager(temp_config)
         
-        metadata = mgr.get_symbol_metadata('binance', 'BTC/USDT')
+        metadata = mgr.get_symbol_metadata(DEFAULT_EXCHANGE, DEFAULT_SYMBOL)
         mgr.save_symbol_metadata(metadata)
         
         # 重新加载
-        loaded = mgr.get_symbol_metadata('binance', 'BTC/USDT')
+        loaded = mgr.get_symbol_metadata(DEFAULT_EXCHANGE, DEFAULT_SYMBOL)
         
         assert loaded.exchange == metadata.exchange
         assert loaded.symbol == metadata.symbol
@@ -288,9 +296,9 @@ class TestMetadataManager:
         start_ts = int(datetime(2024, 1, 1).timestamp() * 1000)
         end_ts = int(datetime(2024, 1, 31).timestamp() * 1000)
         
-        mgr.update_data_range('binance', 'BTC/USDT', start_ts, end_ts)
+        mgr.update_data_range(DEFAULT_EXCHANGE, DEFAULT_SYMBOL, start_ts, end_ts)
         
-        metadata = mgr.get_symbol_metadata('binance', 'BTC/USDT')
+        metadata = mgr.get_symbol_metadata(DEFAULT_EXCHANGE, DEFAULT_SYMBOL)
         
         assert metadata.data_range is not None
         assert metadata.data_range.start_timestamp == start_ts
@@ -302,7 +310,7 @@ class TestMetadataManager:
         
         # 创建一些元数据
         mgr.save_symbol_metadata(
-            mgr.get_symbol_metadata('binance', 'BTC/USDT')
+            mgr.get_symbol_metadata(DEFAULT_EXCHANGE, DEFAULT_SYMBOL)
         )
         mgr.save_symbol_metadata(
             mgr.get_symbol_metadata('okx', 'ETH/USDT')
@@ -310,7 +318,7 @@ class TestMetadataManager:
         
         exchanges = mgr.list_exchanges()
         
-        assert 'binance' in exchanges
+        assert DEFAULT_EXCHANGE in exchanges
         assert 'okx' in exchanges
     
     def test_list_symbols(self, temp_config):
@@ -319,15 +327,15 @@ class TestMetadataManager:
         
         # 创建元数据
         mgr.save_symbol_metadata(
-            mgr.get_symbol_metadata('binance', 'BTC/USDT')
+            mgr.get_symbol_metadata(DEFAULT_EXCHANGE, DEFAULT_SYMBOL)
         )
         mgr.save_symbol_metadata(
-            mgr.get_symbol_metadata('binance', 'ETH/USDT')
+            mgr.get_symbol_metadata(DEFAULT_EXCHANGE, TEST_SYMBOLS[1])
         )
         
-        symbols = mgr.list_symbols('binance')
+        symbols = mgr.list_symbols(DEFAULT_EXCHANGE)
         
-        assert 'BTC/USDT' in symbols
+        assert DEFAULT_SYMBOL in symbols
         assert 'ETH/USDT' in symbols
 
 

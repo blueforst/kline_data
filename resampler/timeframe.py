@@ -16,22 +16,24 @@ from utils.constants import (
     TIMEFRAME_SECONDS,
     TIMEFRAME_TO_PANDAS,
     PANDAS_TO_TIMEFRAME,
+    get_timeframe_seconds as _get_timeframe_seconds,
+    validate_timeframe as _validate_timeframe,
 )
 
 
 def get_timeframe_seconds(timeframe: str) -> int:
     """
     获取时间周期对应的秒数
-    
+
+    注意：此函数为向后兼容性保留，新代码请使用 utils.constants.get_timeframe_seconds
+
     Args:
         timeframe: 时间周期字符串
-        
+
     Returns:
         int: 秒数
     """
-    if timeframe not in TIMEFRAME_SECONDS:
-        raise ValueError(f"Unknown timeframe: {timeframe}")
-    return TIMEFRAME_SECONDS[timeframe]
+    return _get_timeframe_seconds(timeframe)
 
 
 def get_pandas_freq(timeframe: str) -> str:
@@ -88,19 +90,16 @@ def get_timedelta(timeframe: str) -> timedelta:
 def validate_timeframe(timeframe: str) -> None:
     """
     验证时间周期是否有效
-    
+
+    注意：此函数为向后兼容性保留，新代码请使用 utils.constants.validate_timeframe
+
     Args:
         timeframe: 时间周期字符串
-        
+
     Raises:
         ValueError: 如果时间周期无效
     """
-    if timeframe not in TIMEFRAME_SECONDS:
-        valid_timeframes = ', '.join(sorted(TIMEFRAME_SECONDS.keys()))
-        raise ValueError(
-            f"Invalid timeframe: {timeframe}. "
-            f"Valid timeframes are: {valid_timeframes}"
-        )
+    _validate_timeframe(timeframe)
 
 
 class TimeframeConverter:

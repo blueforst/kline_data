@@ -8,8 +8,13 @@ from config import Config
 from .data_source_strategy import DataSourceStrategy, DataSourceDecision
 from .downloader import DownloadManager
 from reader import ParquetReader
-from resampler import KlineResampler
 from rich.console import Console
+
+# 延迟导入以避免循环导入
+def get_resampler_class():
+    """延迟导入KlineResampler"""
+    from resampler import KlineResampler
+    return KlineResampler
 
 console = Console()
 
@@ -31,6 +36,8 @@ class DataFetcher:
         self.strategy = DataSourceStrategy(config)
         self.download_mgr = DownloadManager(config)
         self.reader = ParquetReader(config)
+        # 使用延迟导入获取KlineResampler类
+        KlineResampler = get_resampler_class()
         self.resampler = KlineResampler(config)
     
     def fetch(

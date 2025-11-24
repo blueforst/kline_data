@@ -7,6 +7,21 @@ import yaml
 from config import ConfigManager, load_config, get_config
 from config.schemas import Config
 
+# 导入全局常量
+from utils.constants import (
+    Timeframe,
+    DEFAULT_EXCHANGE,
+    DEFAULT_SYMBOL,
+    SUPPORTED_EXCHANGES,
+    DEFAULT_LOG_LEVEL,
+    DEFAULT_STORAGE_FORMAT,
+    DEFAULT_COMPRESSION,
+    SUPPORTED_STORAGE_FORMATS,
+    SUPPORTED_COMPRESSIONS,
+    COMMON_INTERVALS,
+    PRECOMPUTE_INTERVALS,
+)
+
 
 class TestConfigManager:
     """测试ConfigManager类"""
@@ -17,15 +32,15 @@ class TestConfigManager:
         config_data = {
             'system': {
                 'version': '1.0.0',
-                'log_level': 'INFO',
+                'log_level': DEFAULT_LOG_LEVEL,
                 'log_path': './logs'
             },
             'storage': {
                 'root_path': './data',
                 'separate_by_exchange': True,
                 'separate_by_symbol': True,
-                'format': 'parquet',
-                'compression': 'snappy',
+                'format': DEFAULT_STORAGE_FORMAT,
+                'compression': DEFAULT_COMPRESSION,
                 'partition': {
                     'enabled': True,
                     'granularity': 'month'
@@ -49,7 +64,7 @@ class TestConfigManager:
                     'backoff_factor': 2,
                     'timeout': 30
                 },
-                'exchanges': ['binance', 'okx']
+                'exchanges': [DEFAULT_EXCHANGE, 'okx']
             },
             'memory': {
                 'max_usage_mb': 4096,
@@ -61,8 +76,8 @@ class TestConfigManager:
                 }
             },
             'resampling': {
-                'supported_intervals': ['1s', '1m', '1h'],
-                'precompute_intervals': ['1m'],
+                'supported_intervals': ['1s', Timeframe.M1.value, Timeframe.H1.value],
+                'precompute_intervals': [Timeframe.M1.value],
                 'aggregation': {
                     'open': 'first',
                     'high': 'max',
@@ -100,8 +115,8 @@ class TestConfigManager:
                 }
             },
             'cli': {
-                'default_exchange': 'binance',
-                'default_symbol': 'BTC/USDT',
+                'default_exchange': DEFAULT_EXCHANGE,
+                'default_symbol': DEFAULT_SYMBOL,
                 'output_format': 'table'
             }
         }
@@ -137,7 +152,7 @@ class TestConfigManager:
         assert isinstance(config, Config)
         assert config.system.version == '1.0.0'
         assert config.storage.root_path == './data'
-        assert 'binance' in config.ccxt.exchanges
+        assert DEFAULT_EXCHANGE in config.ccxt.exchanges
     
     def test_load_nonexistent_file(self):
         """测试加载不存在的文件"""
@@ -152,7 +167,7 @@ class TestConfigManager:
         
         # 测试嵌套键
         assert manager.get('storage.root_path') == './data'
-        assert manager.get('storage.compression') == 'snappy'
+        assert manager.get('storage.compression') == DEFAULT_COMPRESSION
         assert manager.get('ccxt.retry.max_attempts') == 3
         
         # 测试默认值
@@ -171,7 +186,7 @@ class TestConfigManager:
         
         config = manager.get_config()
         assert isinstance(config, Config)
-        assert config.storage.compression == 'snappy'
+        assert config.storage.compression == DEFAULT_COMPRESSION
     
     def test_update_config(self, temp_config_file):
         """测试更新配置"""
@@ -238,7 +253,7 @@ class TestConfigManager:
         config = manager.reload()
         
         # 应该恢复到文件中的值
-        assert config.storage.compression == 'snappy'
+        assert config.storage.compression == DEFAULT_COMPRESSION
     
     def test_validate_config(self, temp_config_file):
         """测试验证配置"""
@@ -255,7 +270,7 @@ class TestConfigManager:
         config_dict = manager.to_dict()
         assert isinstance(config_dict, dict)
         assert 'storage' in config_dict
-        assert config_dict['storage']['compression'] == 'snappy'
+        assert config_dict['storage']['compression'] == DEFAULT_COMPRESSION
     
     def test_to_json(self, temp_config_file):
         """测试转换为JSON"""
@@ -265,7 +280,7 @@ class TestConfigManager:
         json_str = manager.to_json()
         assert isinstance(json_str, str)
         assert 'storage' in json_str
-        assert 'snappy' in json_str
+        assert DEFAULT_COMPRESSION in json_str
 
 
 class TestConfigSchema:
@@ -278,9 +293,9 @@ class TestConfigSchema:
         # 有效配置
         config = StorageConfig(
             root_path='./data',
-            compression='snappy'
+            compression=DEFAULT_COMPRESSION
         )
-        assert config.compression == 'snappy'
+        assert config.compression == DEFAULT_COMPRESSION
         
         # 无效压缩格式
         with pytest.raises(ValueError):
@@ -295,7 +310,7 @@ class TestConfigSchema:
         
         # 有效配置
         config = CCXTConfig(
-            exchanges=['binance', 'okx']
+            exchanges=[DEFAULT_EXCHANGE, 'okx']
         )
         assert len(config.exchanges) == 2
         

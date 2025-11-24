@@ -207,6 +207,15 @@ DEFAULT_EXCHANGE: Final[str] = 'binance'
 # 默认交易对
 DEFAULT_SYMBOL: Final[str] = 'BTC/USDT'
 
+# 交易对常量
+TEST_SYMBOLS: Final[List[str]] = [
+    'BTC/USDT',
+    'ETH/USDT',
+    'BNB/USDT',
+    'LTC/USDT'
+]  # 测试用交易对列表
+DEMO_SYMBOL: Final[str] = 'BTC/USDT'  # 演示用交易对
+
 
 # ============================================================================
 # 数据源相关常量
@@ -220,6 +229,12 @@ COMMON_INTERVALS: Final[List[str]] = ['1m', '5m', '15m', '30m', '1h', '4h', '1d'
 
 # 预计算周期（这些周期会被提前计算并缓存）
 PRECOMPUTE_INTERVALS: Final[List[str]] = ['1m', '5m', '1h']
+
+# 常用时间周期默认值
+DEFAULT_QUERY_INTERVAL: Final[str] = '1d'  # 默认查询周期
+DEFAULT_DOWNLOAD_INTERVAL: Final[str] = '1s'  # 默认下载周期
+API_DEFAULT_INTERVAL: Final[str] = '1m'  # API默认周期
+DEMO_INTERVALS: Final[List[str]] = ['1m', '5m', '1h', '1d']  # 演示用周期列表
 
 
 # ============================================================================
@@ -262,6 +277,15 @@ CCXT_OHLCV_INDEX: Final[Dict[str, int]] = {
     'volume': 5,
 }
 
+# OHLCV字段聚合规则
+OHLCV_AGGREGATION_RULES: Final[Dict[str, str]] = {
+    'open': 'first',   # 开盘价取第一个值
+    'high': 'max',     # 最高价取最大值
+    'low': 'min',      # 最低价取最小值
+    'close': 'last',   # 收盘价取最后一个值
+    'volume': 'sum',   # 成交量求和
+}
+
 
 # ============================================================================
 # 验证和限制常量
@@ -293,6 +317,10 @@ INTERNAL_TIMEZONE: Final[str] = 'UTC'
 # 支持的显示时区
 DISPLAY_TIMEZONES: Final[List[str]] = ['UTC', 'local']
 
+# 时间相关常量
+LOCAL_TIMEZONE: Final[str] = 'local'  # 本地时区标识
+PANDAS_TIMESTAMP_UNIT: Final[str] = 'ms'  # Pandas时间戳单位
+
 
 # ============================================================================
 # API相关常量
@@ -306,6 +334,37 @@ DEFAULT_API_PORT: Final[int] = 8000
 
 # API默认主机
 DEFAULT_API_HOST: Final[str] = '0.0.0.0'
+
+# API状态常量
+API_STATUS_HEALTHY: Final[str] = "healthy"  # API健康状态
+API_SERVICE_NAME: Final[str] = "kline-data-service"  # 服务名称
+API_SUCCESS_MESSAGE: Final[str] = "数据下载完成"  # 成功消息
+API_METADATA_TAG: Final[str] = "元数据"  # 元数据标签
+
+
+# ============================================================================
+# 文件相关常量
+# ============================================================================
+
+# 文件目录和扩展名
+RAW_DATA_DIR: Final[str] = 'raw'  # 原始数据目录
+PARQUET_EXTENSION: Final[str] = '.parquet'  # Parquet文件扩展名
+
+# 文件编码
+DEFAULT_ENCODING: Final[str] = 'utf-8'  # 默认文件编码
+MARKDOWN_ENCODING: Final[str] = 'text/markdown'  # Markdown文件编码类型
+
+
+# ============================================================================
+# 状态相关常量
+# ============================================================================
+
+# 通用状态常量
+STATUS_NA: Final[str] = "N/A"  # 不可用状态标识
+
+# 数据验证相关
+VALIDATION_METHODS: Final[List[str]] = ['iqr', 'zscore']  # 支持的验证方法
+VALIDATION_STATUS: Final[List[str]] = ['success', 'error']  # 验证状态列表
 
 
 # ============================================================================
@@ -362,10 +421,10 @@ def validate_timeframe(timeframe: str) -> None:
 
 def validate_exchange(exchange: str) -> None:
     """验证交易所是否支持
-    
+
     Args:
         exchange: 交易所名称
-        
+
     Raises:
         ValueError: 如果交易所不支持
     """
@@ -373,6 +432,62 @@ def validate_exchange(exchange: str) -> None:
         raise ValueError(
             f"Unsupported exchange: {exchange}. "
             f"Supported exchanges: {', '.join(SUPPORTED_EXCHANGES)}"
+        )
+
+
+def validate_symbol(symbol: str) -> None:
+    """验证交易对格式是否有效
+
+    Args:
+        symbol: 交易对符号，如 'BTC/USDT'
+
+    Raises:
+        ValueError: 如果交易对格式无效
+    """
+    if not symbol or '/' not in symbol:
+        raise ValueError(
+            f"Invalid symbol format: {symbol}. "
+            f"Expected format: 'BASE/QUOTE' (e.g., 'BTC/USDT')"
+        )
+
+
+def validate_ohlcv_aggregation_rule(field: str, rule: str) -> None:
+    """验证OHLCV字段聚合规则是否有效
+
+    Args:
+        field: OHLCV字段名
+        rule: 聚合规则
+
+    Raises:
+        ValueError: 如果字段或规则无效
+    """
+    if field not in OHLCV_AGGREGATION_RULES:
+        raise ValueError(
+            f"Invalid OHLCV field: {field}. "
+            f"Valid fields: {list(OHLCV_AGGREGATION_RULES.keys())}"
+        )
+
+    valid_rules = {'first', 'last', 'max', 'min', 'sum'}
+    if rule not in valid_rules:
+        raise ValueError(
+            f"Invalid aggregation rule: {rule}. "
+            f"Valid rules: {list(valid_rules)}"
+        )
+
+
+def validate_validation_method(method: str) -> None:
+    """验证数据验证方法是否有效
+
+    Args:
+        method: 验证方法名称
+
+    Raises:
+        ValueError: 如果验证方法无效
+    """
+    if method not in VALIDATION_METHODS:
+        raise ValueError(
+            f"Invalid validation method: {method}. "
+            f"Valid methods: {VALIDATION_METHODS}"
         )
 
 
@@ -391,12 +506,18 @@ __all__ = [
     'DEFAULT_SOURCE_INTERVAL',
     'COMMON_INTERVALS',
     'PRECOMPUTE_INTERVALS',
-    
+    'DEFAULT_QUERY_INTERVAL',
+    'DEFAULT_DOWNLOAD_INTERVAL',
+    'API_DEFAULT_INTERVAL',
+    'DEMO_INTERVALS',
+
     # 交易所相关
     'SUPPORTED_EXCHANGES',
     'DEFAULT_EXCHANGE',
     'DEFAULT_SYMBOL',
-    
+    'TEST_SYMBOLS',
+    'DEMO_SYMBOL',
+
     # 存储相关
     'SUPPORTED_STORAGE_FORMATS',
     'DEFAULT_STORAGE_FORMAT',
@@ -408,7 +529,8 @@ __all__ = [
     # OHLCV相关
     'OHLCV_COLUMNS',
     'CCXT_OHLCV_INDEX',
-    
+    'OHLCV_AGGREGATION_RULES',
+
     # 验证和限制
     'MIN_DATA_COMPLETENESS',
     'MAX_DUPLICATE_RATE',
@@ -419,12 +541,29 @@ __all__ = [
     # 时区
     'INTERNAL_TIMEZONE',
     'DISPLAY_TIMEZONES',
-    
+    'LOCAL_TIMEZONE',
+    'PANDAS_TIMESTAMP_UNIT',
+
     # API
     'API_VERSION',
     'DEFAULT_API_PORT',
     'DEFAULT_API_HOST',
-    
+    'API_STATUS_HEALTHY',
+    'API_SERVICE_NAME',
+    'API_SUCCESS_MESSAGE',
+    'API_METADATA_TAG',
+
+    # 文件相关
+    'RAW_DATA_DIR',
+    'PARQUET_EXTENSION',
+    'DEFAULT_ENCODING',
+    'MARKDOWN_ENCODING',
+
+    # 状态相关
+    'STATUS_NA',
+    'VALIDATION_METHODS',
+    'VALIDATION_STATUS',
+
     # 日志
     'LOG_LEVELS',
     'DEFAULT_LOG_LEVEL',
@@ -433,4 +572,7 @@ __all__ = [
     'get_timeframe_seconds',
     'validate_timeframe',
     'validate_exchange',
+    'validate_symbol',
+    'validate_ohlcv_aggregation_rule',
+    'validate_validation_method',
 ]

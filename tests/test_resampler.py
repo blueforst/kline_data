@@ -1,4 +1,7 @@
-"""重采样层测试"""
+"""重采样层测试
+
+测试文件已更新为使用统一的全局常量定义。
+"""
 
 import pytest
 import pandas as pd
@@ -8,6 +11,8 @@ from datetime import datetime, timedelta
 
 from config import load_config
 from storage import ParquetWriter
+
+# 导入更新后的resampler模块（现在使用utils.constants）
 from resampler import (
     Timeframe,
     TimeframeConverter,
@@ -15,6 +20,21 @@ from resampler import (
     can_resample,
     validate_timeframe,
     KlineResampler,
+    OHLCV_COLUMNS,
+)
+
+# 从常量模块导入验证函数（推荐使用方式）
+from utils.constants import (
+    SUPPORTED_EXCHANGES,
+    DEFAULT_EXCHANGE,
+    DEFAULT_SYMBOL,
+    DEMO_SYMBOL,
+    TEST_SYMBOLS,
+    validate_exchange,
+    validate_symbol,
+    OHLCV_AGGREGATION_RULES,
+    VALIDATION_METHODS,
+    CCXT_OHLCV_INDEX,
 )
 
 
@@ -37,9 +57,9 @@ class TestTimeframe:
     
     def test_timeframe_pandas_freq(self):
         """测试pandas频率"""
-        assert Timeframe.S1.pandas_freq == '1S'
-        assert Timeframe.M1.pandas_freq == '1T'
-        assert Timeframe.H1.pandas_freq == '1H'
+        assert Timeframe.S1.pandas_freq == '1s'
+        assert Timeframe.M1.pandas_freq == '1min'
+        assert Timeframe.H1.pandas_freq == '1h'
     
     def test_from_string(self):
         """测试从字符串创建"""
@@ -64,9 +84,9 @@ class TestTimeframeConverter:
     
     def test_to_pandas(self):
         """测试转换为pandas频率"""
-        assert TimeframeConverter.to_pandas('1s') == '1S'
-        assert TimeframeConverter.to_pandas('1m') == '1T'
-        assert TimeframeConverter.to_pandas('1h') == '1H'
+        assert TimeframeConverter.to_pandas('1s') == '1s'
+        assert TimeframeConverter.to_pandas('1m') == '1min'
+        assert TimeframeConverter.to_pandas('1h') == '1h'
     
     def test_compare(self):
         """测试比较"""
@@ -119,81 +139,86 @@ class TestKlineResampler:
     def sample_1s_data(self):
         """创建1秒数据"""
         start_date = datetime(2024, 1, 1)
-        dates = pd.date_range(start_date, periods=3600, freq='1s')  # 1小时
-        
+        # 使用常量定义的pandas频率
+        dates = pd.date_range(start_date, periods=3600, freq=Timeframe.S1.pandas_freq)  # 1小时
+
         df = pd.DataFrame({
-            'timestamp': dates,
-            'open': 100.0,
-            'high': 105.0,
-            'low': 95.0,
-            'close': 102.0,
-            'volume': 10.0,
+            OHLCV_COLUMNS[0]: dates,  # 'timestamp'
+            OHLCV_COLUMNS[1]: 100.0,  # 'open'
+            OHLCV_COLUMNS[2]: 105.0,  # 'high'
+            OHLCV_COLUMNS[3]: 95.0,   # 'low'
+            OHLCV_COLUMNS[4]: 102.0,  # 'close'
+            OHLCV_COLUMNS[5]: 10.0,   # 'volume'
         })
-        
+
         return df
     
     def test_resample_1s_to_1m(self, temp_config, sample_1s_data):
         """测试1秒到1分钟重采样"""
         resampler = KlineResampler(temp_config)
-        
+
         resampled = resampler.resample(
             sample_1s_data,
-            '1s',
-            '1m'
+            Timeframe.S1.value,
+            Timeframe.M1.value
         )
-        
+
         # 应该有60行（3600秒 / 60秒）
         assert len(resampled) == 60
-        
-        # 检查OHLC
-        assert 'open' in resampled.columns
-        assert 'high' in resampled.columns
-        assert 'low' in resampled.columns
-        assert 'close' in resampled.columns
-        
+
+        # 使用常量检查OHLC列
+        assert OHLCV_COLUMNS[1] in resampled.columns  # 'open'
+        assert OHLCV_COLUMNS[2] in resampled.columns  # 'high'
+        assert OHLCV_COLUMNS[3] in resampled.columns  # 'low'
+        assert OHLCV_COLUMNS[4] in resampled.columns  # 'close'
+
         # 检查成交量（应该是原来的60倍）
-        assert resampled['volume'].iloc[0] == 60 * 10.0
+        assert resampled[OHLCV_COLUMNS[5]].iloc[0] == 60 * 10.0  # 'volume'
     
     def test_resample_1s_to_1h(self, temp_config, sample_1s_data):
         """测试1秒到1小时重采样"""
         resampler = KlineResampler(temp_config)
-        
+
         resampled = resampler.resample(
             sample_1s_data,
-            '1s',
-            '1h'
+            Timeframe.S1.value,
+            Timeframe.H1.value
         )
-        
+
         # 应该有1行
         assert len(resampled) == 1
-        
-        # 成交量应该是总和
-        assert resampled['volume'].iloc[0] == 3600 * 10.0
+
+        # 成交量应该是总和（使用常量定义的列名）
+        assert resampled[OHLCV_COLUMNS[5]].iloc[0] == 3600 * 10.0  # 'volume'
     
     def test_resample_1m_to_5m(self, temp_config):
         """测试1分钟到5分钟重采样"""
         # 创建1分钟数据
         start_date = datetime(2024, 1, 1)
-        dates = pd.date_range(start_date, periods=60, freq='1T')
-        
+        dates = pd.date_range(start_date, periods=60, freq=Timeframe.M1.pandas_freq)
+
         df = pd.DataFrame({
-            'timestamp': dates,
-            'open': 100.0,
-            'high': 105.0,
-            'low': 95.0,
-            'close': 102.0,
-            'volume': 10.0,
+            OHLCV_COLUMNS[0]: dates,  # 'timestamp'
+            OHLCV_COLUMNS[1]: 100.0,  # 'open'
+            OHLCV_COLUMNS[2]: 105.0,  # 'high'
+            OHLCV_COLUMNS[3]: 95.0,   # 'low'
+            OHLCV_COLUMNS[4]: 102.0,  # 'close'
+            OHLCV_COLUMNS[5]: 10.0,   # 'volume'
         })
-        
+
         resampler = KlineResampler(temp_config)
-        
-        resampled = resampler.resample(df, '1m', '5m')
-        
+
+        resampled = resampler.resample(
+            df,
+            Timeframe.M1.value,
+            Timeframe.M5.value
+        )
+
         # 应该有12行（60分钟 / 5分钟）
         assert len(resampled) == 12
-        
-        # 成交量应该是原来的5倍
-        assert resampled['volume'].iloc[0] == 5 * 10.0
+
+        # 成交量应该是原来的5倍（使用常量定义的列名）
+        assert resampled[OHLCV_COLUMNS[5]].iloc[0] == 5 * 10.0  # 'volume'
     
     def test_resample_ohlc_logic(self, temp_config):
         """测试OHLC逻辑正确性"""
@@ -260,9 +285,9 @@ class TestKlineResampler:
         writer = ParquetWriter(temp_config)
         writer.write_partitioned(
             sample_1s_data,
-            'binance',
-            'BTC/USDT',
-            '1s'
+            DEFAULT_EXCHANGE,
+            DEFAULT_SYMBOL,
+            Timeframe.S1.value
         )
         
         resampler = KlineResampler(temp_config)
@@ -271,42 +296,121 @@ class TestKlineResampler:
         end = datetime(2024, 1, 1, 1, 0)
         
         results = resampler.batch_resample(
-            'binance',
-            'BTC/USDT',
+            DEFAULT_EXCHANGE,
+            DEFAULT_SYMBOL,
             start,
             end,
-            '1s',
-            ['1m', '5m', '15m'],
+            Timeframe.S1.value,
+            [Timeframe.M1.value, Timeframe.M5.value, Timeframe.M15.value],
             save=False
         )
         
-        assert '1m' in results
-        assert '5m' in results
-        assert '15m' in results
-        
-        assert len(results['1m']) == 60
-        assert len(results['5m']) == 12
-        assert len(results['15m']) == 4
+        assert Timeframe.M1.value in results
+        assert Timeframe.M5.value in results
+        assert Timeframe.M15.value in results
+
+        assert len(results[Timeframe.M1.value]) == 60
+        assert len(results[Timeframe.M5.value]) == 12
+        assert len(results[Timeframe.M15.value]) == 4
     
     def test_verify_resample(self, temp_config, sample_1s_data):
         """测试重采样验证"""
         resampler = KlineResampler(temp_config)
-        
+
         resampled = resampler.resample(
             sample_1s_data,
-            '1s',
-            '1m'
+            Timeframe.S1.value,
+            Timeframe.M1.value
         )
-        
+
         result = resampler.verify_resample(
             sample_1s_data,
             resampled,
-            '1s',
-            '1m'
+            Timeframe.S1.value,
+            Timeframe.M1.value
         )
         
         assert result['valid'] is True
         assert len(result['errors']) == 0
+
+
+class TestConstantsValidation:
+    """测试常量验证功能"""
+
+    def test_validate_exchange_function(self):
+        """测试交易所验证函数"""
+        # 测试有效的交易所
+        validate_exchange(DEFAULT_EXCHANGE)
+        for exchange in SUPPORTED_EXCHANGES[:3]:  # 测试前3个交易所
+            validate_exchange(exchange)
+
+        # 测试无效的交易所
+        with pytest.raises(ValueError) as exc_info:
+            validate_exchange('invalid_exchange')
+        assert 'Unsupported exchange' in str(exc_info.value)
+
+    def test_validate_symbol_function(self):
+        """测试交易对验证函数"""
+        # 测试有效的交易对
+        validate_symbol(DEFAULT_SYMBOL)
+        for symbol in TEST_SYMBOLS:
+            validate_symbol(symbol)
+
+        # 测试无效的交易对
+        with pytest.raises(ValueError) as exc_info:
+            validate_symbol('INVALID')
+        assert 'Invalid symbol format' in str(exc_info.value)
+
+        with pytest.raises(ValueError) as exc_info:
+            validate_symbol('')
+        assert 'Invalid symbol format' in str(exc_info.value)
+
+    def test_ohlcv_constants_consistency(self):
+        """测试OHLCV常量的一致性"""
+        # 验证OHLCV列名常量
+        assert len(OHLCV_COLUMNS) == 6
+        assert OHLCV_COLUMNS[0] == 'timestamp'
+        assert OHLCV_COLUMNS[1] == 'open'
+        assert OHLCV_COLUMNS[2] == 'high'
+        assert OHLCV_COLUMNS[3] == 'low'
+        assert OHLCV_COLUMNS[4] == 'close'
+        assert OHLCV_COLUMNS[5] == 'volume'
+
+        # 验证CCXT索引一致性
+        assert CCXT_OHLCV_INDEX['timestamp'] == 0
+        assert CCXT_OHLCV_INDEX['open'] == 1
+        assert CCXT_OHLCV_INDEX['high'] == 2
+        assert CCXT_OHLCV_INDEX['low'] == 3
+        assert CCXT_OHLCV_INDEX['close'] == 4
+        assert CCXT_OHLCV_INDEX['volume'] == 5
+
+        # 验证聚合规则
+        assert OHLCV_AGGREGATION_RULES['open'] == 'first'
+        assert OHLCV_AGGREGATION_RULES['high'] == 'max'
+        assert OHLCV_AGGREGATION_RULES['low'] == 'min'
+        assert OHLCV_AGGREGATION_RULES['close'] == 'last'
+        assert OHLCV_AGGREGATION_RULES['volume'] == 'sum'
+
+    def test_exchange_constants(self):
+        """测试交易所相关常量"""
+        # 验证默认交易所
+        assert DEFAULT_EXCHANGE in SUPPORTED_EXCHANGES
+        assert DEFAULT_EXCHANGE == 'binance'
+
+        # 验证测试符号
+        assert DEFAULT_SYMBOL in TEST_SYMBOLS
+        assert DEFAULT_SYMBOL == 'BTC/USDT'
+
+        # 验证交易所列表包含主要交易所
+        required_exchanges = ['binance', 'okx', 'bybit']
+        for exchange in required_exchanges:
+            assert exchange in SUPPORTED_EXCHANGES
+
+    def test_validation_methods_constants(self):
+        """测试验证方法常量"""
+        assert isinstance(VALIDATION_METHODS, list)
+        assert 'iqr' in VALIDATION_METHODS
+        assert 'zscore' in VALIDATION_METHODS
 
 
 if __name__ == '__main__':

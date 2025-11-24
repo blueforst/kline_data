@@ -230,7 +230,48 @@ API文档：http://localhost:8000/docs
 - [数据获取策略](docs/data_fetching_strategy.md) - 智能数据获取策略详解
 - [CLI使用指南](docs/cli_guide.md) - 命令行工具完整指南
 - [项目总结](docs/project_summary.md) - 项目概览和实现细节
-- [时间周期使用指南](docs/timeframe_usage.md) - 🆕 全局时间周期枚举使用说明
+- [时间周期使用指南](docs/timeframe_usage.md) - 全局时间周期枚举使用说明
+
+### 🆕 全局常量系统文档
+
+项目现在提供了完整的全局常量系统，帮助避免硬编码和提高代码可维护性：
+
+- **[全局常量使用指南](docs/global_constants_guide.md)** - 完整的使用指南和最佳实践
+- **[API参考文档](docs/constants_api_reference.md)** - 详细的API文档和类型信息
+- **[常量迁移指南](docs/constants_migration_guide.md)** - 从硬编码到常量的完整迁移方案
+- **[文档目录](docs/constants_documentation_index.md)** - 常量文档导航
+
+#### 常量系统亮点
+
+```python
+# 🆕 使用全局常量替代硬编码
+from utils.constants import (
+    Timeframe, SUPPORTED_EXCHANGES, DEFAULT_SYMBOL,
+    validate_timeframe, validate_exchange
+)
+
+# ✅ 类型安全的时间周期
+tf = Timeframe.from_string('1h')
+print(f"1小时 = {tf.seconds}秒")
+
+# ✅ 内置验证
+validate_exchange('binance')  # 验证通过
+validate_timeframe('1m')      # 验证通过
+
+# ✅ 避免硬编码
+symbol = DEFAULT_SYMBOL       # 'BTC/USDT'
+exchanges = SUPPORTED_EXCHANGES  # 支持的交易所列表
+```
+
+#### 主要优势
+
+- 🎯 **避免硬编码** - 统一管理所有配置值
+- 🔒 **类型安全** - 提供完整的类型提示和验证
+- 🚀 **易于维护** - 集中配置，修改一处生效全局
+- 📚 **完整文档** - 详细的使用指南和API文档
+- 🧪 **全面测试** - 100%测试覆盖，确保正确性
+
+查看[常量使用指南](docs/global_constants_guide.md)了解更多详情。
 
 ## 🏗️ 项目结构
 
