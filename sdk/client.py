@@ -1,7 +1,7 @@
 """K线数据客户端 - 带智能数据源选择"""
 
 import pandas as pd
-from typing import Optional, List
+from typing import Optional, List, Callable
 from datetime import datetime
 
 from config import Config
@@ -315,7 +315,8 @@ class KlineClient:
         end_time: Optional[datetime] = None,
         interval: str = DEFAULT_DOWNLOAD_INTERVAL,
         force: bool = False,
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[Callable[[float, int, int], None]] = None,
+        interrupt_handler: Optional[Callable[[], None]] = None
     ) -> dict:
         """
         下载数据
@@ -328,6 +329,7 @@ class KlineClient:
             interval: 时间周期
             force: 是否强制重新下载（删除指定时间范围的现有数据）
             progress_callback: 进度回调函数(percentage, downloaded_records, total_records)
+            interrupt_handler: 中断时调用的处理函数，用于停止外部进度显示
 
         Returns:
             dict: 下载结果摘要
@@ -338,7 +340,14 @@ class KlineClient:
         validate_symbol(symbol)
 
         task_id = self.download_mgr.download(
-            exchange, symbol, start_time, end_time, interval, progress_callback, force
+            exchange,
+            symbol,
+            start_time,
+            end_time,
+            interval,
+            progress_callback,
+            interrupt_handler,
+            force,
         )
 
         # 读取元数据汇总

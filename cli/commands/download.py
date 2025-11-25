@@ -77,6 +77,14 @@ def download_data(
                 task_id = progress.add_task("下载中...", total=100, downloaded=0, total_records=0, visible=False)
                 progress_stopped = False
                 
+                def stop_progress():
+                    nonlocal progress_stopped
+                    if progress_stopped:
+                        return
+                    progress_stopped = True
+                    progress.update(task_id, visible=False)
+                    progress.stop()
+                
                 # 定义进度回调
                 def update_progress(percentage: float, downloaded_records: int, total_records: int):
                     # 如果进度已停止，不再更新
@@ -96,11 +104,11 @@ def download_data(
                         end_time=end_time,
                         force=force,
                         progress_callback=update_progress,
+                        interrupt_handler=stop_progress,
                     )
                 except KeyboardInterrupt:
                     # 用户中断时立即停止进度更新
-                    progress_stopped = True
-                    progress.stop()
+                    stop_progress()
                     raise
             
             # 显示结果

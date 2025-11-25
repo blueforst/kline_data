@@ -50,7 +50,8 @@ class DataDownloader:
         symbol: str,
         config: Config,
         interval: str = '1s',
-        progress_callback: Optional[Callable[[float, int, int], None]] = None
+        progress_callback: Optional[Callable[[float, int, int], None]] = None,
+        interrupt_handler: Optional[Callable[[], None]] = None
     ):
         """
         初始化下载器
@@ -61,6 +62,7 @@ class DataDownloader:
             config: 配置对象
             interval: 下载的时间周期（默认1s）
             progress_callback: 进度回调函数(percentage, downloaded_records, total_records)
+            interrupt_handler: 中断时调用的处理函数，用于立即停止外部进度渲染
         """
         self.exchange_name = exchange
         self.symbol = symbol
@@ -68,6 +70,7 @@ class DataDownloader:
         self.interval = interval
         self.exchange = self._init_exchange()
         self.progress_callback = progress_callback
+        self._interrupt_handler = interrupt_handler
         
         # 组件
         self.writer = ParquetWriter(config)
@@ -82,14 +85,31 @@ class DataDownloader:
         
         # 中断处理
         self._interrupted = False
+        self._interrupt_notified = False
+        self._signal_message_printed = False
         self._current_task = None
         self._original_sigint_handler = None
         self._original_sigterm_handler = None
     
+    def _notify_interrupt(self):
+        """触发中断回调（只执行一次）"""
+        if self._interrupt_notified:
+            return
+        self._interrupt_notified = True
+        if self._interrupt_handler:
+            try:
+                self._interrupt_handler()
+            except Exception:
+                # 回调仅用于停止外部进度条，失败时忽略以保证下载流程继续清理
+                pass
+    
     def _signal_handler(self, signum, frame):
         """信号处理器，用于优雅地处理中断"""
         self._interrupted = True
-        console.print(f"\n\n[信号] 接收到中断信号 ({signal.Signals(signum).name})，准备停止下载...")
+        self._notify_interrupt()
+        if not self._signal_message_printed:
+            self._signal_message_printed = True
+            console.print(f"\n\n[信号] 接收到中断信号 ({signal.Signals(signum).name})，准备停止下载...")
     
     def _setup_signal_handlers(self):
         """设置信号处理器"""
@@ -226,6 +246,11 @@ class DataDownloader:
         if task_id is None:
             task_id = str(uuid.uuid4())
         
+        # 重置中断状态，确保复用实例时行为正确
+        self._interrupted = False
+        self._interrupt_notified = False
+        self._signal_message_printed = False
+    
         # 确保时间为UTC
         start_time = to_utc(start_time)
         end_time = to_utc(end_time)
@@ -313,6 +338,7 @@ class DataDownloader:
             
         except KeyboardInterrupt:
             # 用户中断（Ctrl+C）
+            self._notify_interrupt()
             console.print("\n\n[中断] 检测到用户中断，正在保存进度...")
             task.status = TaskStatus.CANCELLED
             task.errors.append("User interrupted (Ctrl+C)")
@@ -429,11 +455,12 @@ class DataDownloader:
                 task.updated_at = format_datetime(now_utc())
                 self.metadata_mgr.save_download_task(task)
                 
-                # 调用进度回调
-                if self.progress_callback:
-                    self.progress_callback(progress_pct, downloaded_records, estimated_total_records)
-                else:
-                    console.print(f"Progress: {progress_pct:.2f}% ({downloaded_records}/{estimated_total_records} records)")
+                # 调用进度回调（仅在未中断时）
+                if not self._interrupted:
+                    if self.progress_callback:
+                        self.progress_callback(progress_pct, downloaded_records, estimated_total_records)
+                    else:
+                        console.print(f"Progress: {progress_pct:.2f}% ({downloaded_records}/{estimated_total_records} records)")
                 
             except Exception as e:
                 console.print(f"Error at timestamp {current_time}: {e}")
@@ -624,7 +651,8 @@ class DownloadManager:
         exchange: str,
         symbol: str,
         interval: str = '1s',
-        progress_callback: Optional[Callable[[float, int, int], None]] = None
+        progress_callback: Optional[Callable[[float, int, int], None]] = None,
+        interrupt_handler: Optional[Callable[[], None]] = None
     ) -> DataDownloader:
         """
         创建下载器实例
@@ -634,11 +662,12 @@ class DownloadManager:
             symbol: 交易对
             interval: 时间周期
             progress_callback: 进度回调函数(percentage, downloaded_records, total_records)
+            interrupt_handler: 中断时调用的处理函数，用于停止外部进度显示
             
         Returns:
             DataDownloader: 下载器实例
         """
-        return DataDownloader(exchange, symbol, self.config, interval, progress_callback)
+        return DataDownloader(exchange, symbol, self.config, interval, progress_callback, interrupt_handler)
     
     def download(
         self,
@@ -648,6 +677,7 @@ class DownloadManager:
         end_time: Optional[datetime] = None,
         interval: str = '1s',
         progress_callback: Optional[Callable[[float, int, int], None]] = None,
+        interrupt_handler: Optional[Callable[[], None]] = None,
         force: bool = False
     ) -> str:
         """
@@ -660,6 +690,7 @@ class DownloadManager:
             end_time: 结束时间（会转换为UTC）
             interval: 时间周期
             progress_callback: 进度回调函数(percentage, downloaded_records, total_records)
+            interrupt_handler: 中断时调用的处理函数，用于停止外部进度显示
             force: 是否强制重新下载（删除现有数据）
             
         Returns:
@@ -668,7 +699,7 @@ class DownloadManager:
         if end_time is None:
             end_time = now_utc()
         
-        downloader = self.create_downloader(exchange, symbol, interval, progress_callback)
+        downloader = self.create_downloader(exchange, symbol, interval, progress_callback, interrupt_handler)
         return downloader.download_range(start_time, end_time, force=force)
     
     def update(self, exchange: str, symbol: str) -> Optional[str]:

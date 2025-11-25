@@ -98,6 +98,9 @@ def list_tasks(
         if not no_interactive and tasks:
             _interactive_resume(tasks, metadata_mgr, config)
             
+    except typer.Exit:
+        # typer.Exit 需要重新抛出
+        raise
     except Exception as e:
         console.print(f"[red]✗ 错误:[/red] {e}")
         raise typer.Exit(1)
@@ -163,12 +166,19 @@ def _interactive_resume(tasks, metadata_mgr, config):
             console.print(f"  错误信息: {', '.join(selected_task.errors[:3])}")
         
         if Confirm.ask("\n是否恢复此任务？"):
-            _resume_task(selected_task, metadata_mgr, config)
+            try:
+                _resume_task(selected_task, metadata_mgr, config)
+            except KeyboardInterrupt:
+                # 传播KeyboardInterrupt，不作为错误处理
+                raise
         else:
             console.print("[yellow]已取消恢复[/yellow]")
     
     except KeyboardInterrupt:
         console.print("\n\n[yellow]已取消[/yellow]")
+    except typer.Exit:
+        # typer.Exit 需要重新抛出，不应该被捕获
+        raise
     except Exception as e:
         console.print(f"\n[red]✗ 选择错误:[/red] {e}")
 
@@ -191,14 +201,7 @@ def _resume_task(task, metadata_mgr, config):
         if checkpoint:
             checkpoint_dt = timestamp_to_datetime(checkpoint)
             console.print(f"从断点恢复: {format_datetime(checkpoint_dt, for_display=True)}")
-        
-        # 创建下载器
-        downloader = DataDownloader(
-            exchange=task.exchange,
-            symbol=task.symbol,
-            config=config,
-        )
-        
+
         # 恢复下载 - 在 download_range 内部会先打印缺失范围信息，然后才开始下载
         # 进度回调会在实际下载开始后才被调用
         from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
@@ -213,10 +216,27 @@ def _resume_task(task, metadata_mgr, config):
         ) as progress:
             progress_task = progress.add_task("下载中...", total=100, downloaded=0, total_records=0, visible=False)
             progress_stopped = False
+
+            def stop_progress():
+                nonlocal progress_stopped
+                if progress_stopped:
+                    return
+                progress_stopped = True
+                # 隐藏并停止进度条，防止中断时继续渲染
+                progress.update(progress_task, visible=False)
+                progress.stop()
+
+            # 创建下载器并绑定中断处理器，以便尽快停止进度渲染
+            downloader = DataDownloader(
+                exchange=task.exchange,
+                symbol=task.symbol,
+                config=config,
+                interrupt_handler=stop_progress,
+            )
             
             def update_progress(percentage: float, downloaded_records: int, total_records: int):
-                # 如果进度已停止，不再更新
-                if progress_stopped:
+                # 如果进度已停止或下载器被中断，不再更新
+                if progress_stopped or downloader._interrupted:
                     return
                 # 首次调用时显示进度条
                 if not progress.tasks[progress_task].visible:
@@ -235,9 +255,12 @@ def _resume_task(task, metadata_mgr, config):
                 )
             except KeyboardInterrupt:
                 # 用户中断时立即停止进度更新
-                progress_stopped = True
-                progress.stop()
+                stop_progress()
                 raise
+            finally:
+                # 确保进度条总是被停止
+                if not progress_stopped:
+                    progress.stop()
         
         console.print(f"\n[green]✓[/green] 任务恢复完成!")
         
@@ -281,6 +304,9 @@ def resume_task(
         
         _resume_task(task, metadata_mgr, config)
         
+    except typer.Exit:
+        # typer.Exit 需要重新抛出
+        raise
     except Exception as e:
         console.print(f"[red]✗ 错误:[/red] {e}")
         raise typer.Exit(1)

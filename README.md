@@ -99,6 +99,45 @@ df = client.get_latest(
     limit=100
 )
 
+# 🆕 使用分块数据流进行回测（内存高效）
+from sdk import ChunkedDataFeed
+
+feed = ChunkedDataFeed(
+    exchange='binance',
+    symbol='BTC/USDT',
+    start_time=datetime(2023, 1, 1),
+    end_time=datetime(2024, 1, 1),
+    interval='1h',
+    chunk_size=10000  # 每次加载1万条数据
+)
+
+# 迭代处理数据块
+for chunk_df in feed:
+    # 进行回测逻辑
+    print(f"处理了 {len(chunk_df)} 条数据")
+
+# 或与backtrader集成
+from sdk import BacktraderDataFeed
+import backtrader as bt
+
+bt_feed = BacktraderDataFeed(
+    exchange='binance',
+    symbol='BTC/USDT',
+    start_time=datetime(2023, 1, 1),
+    end_time=datetime(2024, 1, 1),
+    interval='1h'
+)
+
+cerebro = bt.Cerebro()
+data = bt.feeds.PandasData(
+    dataname=bt_feed.to_backtrader_format(),
+    **bt_feed.get_backtrader_params()
+)
+cerebro.adddata(data)
+# cerebro.addstrategy(YourStrategy)
+# cerebro.run()
+
+
 # 🆕 获取指定时间前的N条K线（使用timezone处理）
 from utils.timezone import to_utc
 
@@ -231,6 +270,7 @@ API文档：http://localhost:8000/docs
 - [CLI使用指南](docs/cli_guide.md) - 命令行工具完整指南
 - [项目总结](docs/project_summary.md) - 项目概览和实现细节
 - [时间周期使用指南](docs/timeframe_usage.md) - 全局时间周期枚举使用说明
+- **[🆕 数据流使用指南](docs/data_feed_guide.md) - 分块数据流和回测集成完整指南** ⭐
 
 ### 🆕 全局常量系统文档
 
