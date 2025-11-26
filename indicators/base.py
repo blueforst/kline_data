@@ -1,273 +1,198 @@
-"""技术指标基类"""
+"""技术指标基类 - 支持TA-Lib和Pandas实现"""
 
 from typing import Optional, Dict, Any, List
 from abc import ABC, abstractmethod
 import pandas as pd
 import numpy as np
-
 from rich.console import Console
+
+from .talib_adapter import talib_adapter
+
 console = Console()
-
-
 
 class BaseIndicator(ABC):
     """
-    技术指标基类
+    技术指标基类 - 支持TA-Lib和Pandas实现
     所有技术指标都应该继承此类
     """
-    
-    def __init__(self, name: str):
+
+    def __init__(self, name: str, use_talib: bool = True):
         """
         初始化指标
-        
+
         Args:
             name: 指标名称
+            use_talib: 是否使用TA-Lib（如果可用）
         """
         self.name = name
+        self.use_talib = use_talib and talib_adapter.is_available()
         self._params: Dict[str, Any] = {}
-    
+
     @abstractmethod
     def calculate(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
         """
-        计算指标
-        
+        计算指标值
+
         Args:
             df: K线数据
-            **kwargs: 指标参数
-            
+            **kwargs: 计算参数
+
         Returns:
-            pd.DataFrame: 包含指标列的数据
+            包含指标值的DataFrame
         """
         pass
-    
+
     def validate_data(self, df: pd.DataFrame, required_columns: List[str]) -> None:
-        """
-        验证输入数据
-        
-        Args:
-            df: K线数据
-            required_columns: 必需的列
-            
-        Raises:
-            ValueError: 数据验证失败
-        """
+        """验证输入数据"""
         if df.empty:
-            raise ValueError("Input DataFrame is empty")
-        
-        missing_columns = set(required_columns) - set(df.columns)
+            raise ValueError("输入数据不能为空")
+
+        missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
-            raise ValueError(f"Missing required columns: {missing_columns}")
-    
-    def set_params(self, **kwargs) -> None:
+            raise ValueError(f"缺少必需列: {missing_columns}")
+
+    def _validate_period(self, period: int, data_length: int) -> None:
+        """验证周期参数"""
+        if period <= 0:
+            raise ValueError("周期必须大于0")
+
+        if period >= data_length:
+            raise ValueError(f"周期({period})不能大于等于数据长度({data_length})")
+
+    def get_required_length(self, **kwargs) -> int:
+        """
+        获取计算所需的最小数据长度
+
+        Args:
+            **kwargs: 计算参数
+
+        Returns:
+            最小数据长度
+        """
+        # 子类应该重写此方法
+        return 1
+
+    def set_params(self, **params) -> None:
         """设置指标参数"""
-        self._params.update(kwargs)
-    
+        self._params.update(params)
+
     def get_params(self) -> Dict[str, Any]:
         """获取指标参数"""
         return self._params.copy()
-    
+
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(name='{self.name}')"
+        """字符串表示"""
+        return f"{self.__class__.__name__}(name='{self.name}', use_talib={self.use_talib})"
 
 
 class MovingAverageBase(BaseIndicator):
-    """移动平均指标基类"""
-    
-    def __init__(self, name: str):
-        super().__init__(name)
-    
-    def _validate_period(self, period: int, data_length: int) -> None:
-        """
-        验证周期参数
-        
-        Args:
-            period: 周期
-            data_length: 数据长度
-            
-        Raises:
-            ValueError: 周期验证失败
-        """
-        if period <= 0:
-            raise ValueError(f"Period must be positive, got {period}")
-        
-        if period > data_length:
-            raise ValueError(
-                f"Period ({period}) cannot be greater than data length ({data_length})"
-            )
+    """移动平均基类"""
+
+    def __init__(self, name: str, use_talib: bool = True):
+        super().__init__(name, use_talib)
+
+    def validate_data(self, df: pd.DataFrame, required_columns: List[str]) -> None:
+        """验证输入数据"""
+        super().validate_data(df, required_columns)
+
+        # 检查数据类型
+        for col in required_columns:
+            if not pd.api.types.is_numeric_dtype(df[col]):
+                raise ValueError(f"列 '{col}' 必须是数值类型")
+
+        # 检查NaN值
+        nan_count = df[required_columns].isnull().sum().sum()
+        if nan_count > 0:
+            console.print(f"警告: 发现 {nan_count} 个NaN值，可能会影响指标计算", style="yellow")
+
+    def _get_data_array(self, df: pd.DataFrame, column: str) -> np.ndarray:
+        """获取指定列的numpy数组"""
+        data = df[column].dropna()
+        if len(data) < 2:
+            raise ValueError(f"列 '{column}' 的有效数据不足")
+        return data.values
 
 
 class OscillatorBase(BaseIndicator):
     """震荡指标基类"""
-    
-    def __init__(self, name: str):
-        super().__init__(name)
-    
-    def _normalize(self, values: pd.Series, min_val: float = 0, max_val: float = 100) -> pd.Series:
+
+    def __init__(self, name: str, use_talib: bool = True):
+        super().__init__(name, use_talib)
+
+    def validate_oscillator_output(self, values: np.ndarray) -> None:
+        """验证震荡指标输出值"""
+        if np.isnan(values).all():
+            raise ValueError("指标计算结果全部为NaN")
+
+        # 检查是否有明显的异常值
+        finite_values = values[np.isfinite(values)]
+        if len(finite_values) > 0:
+            q1, q3 = np.percentile(finite_values, [25, 75])
+            iqr = q3 - q1
+            lower_bound = q1 - 3 * iqr
+            upper_bound = q3 + 3 * iqr
+
+            outliers = finite_values[(finite_values < lower_bound) | (finite_values > upper_bound)]
+            if len(outliers) > 0:
+                console.print(f"警告: 发现 {len(outliers)} 个可能的异常值", style="yellow")
+
+
+class TrendIndicatorBase(BaseIndicator):
+    """趋势指标基类"""
+
+    def __init__(self, name: str, use_talib: bool = True):
+        super().__init__(name, use_talib)
+
+    def calculate_trend_strength(self, values: np.ndarray) -> float:
         """
-        归一化值到指定范围
-        
+        计算趋势强度
+
         Args:
-            values: 值序列
-            min_val: 最小值
-            max_val: 最大值
-            
+            values: 指标值序列
+
         Returns:
-            pd.Series: 归一化后的值
+            趋势强度 (0-1之间，1表示强趋势)
         """
-        v_min = values.min()
-        v_max = values.max()
-        
-        if v_max == v_min:
-            return pd.Series([50.0] * len(values), index=values.index)
-        
-        normalized = (values - v_min) / (v_max - v_min)
-        return normalized * (max_val - min_val) + min_val
+        if len(values) < 10:
+            return 0.0
+
+        # 使用线性回归斜率作为趋势强度
+        x = np.arange(len(values))
+        finite_mask = np.isfinite(values)
+
+        if finite_mask.sum() < 5:
+            return 0.0
+
+        x_finite = x[finite_mask]
+        y_finite = values[finite_mask]
+
+        if len(x_finite) < 2:
+            return 0.0
+
+        # 计算线性相关系数
+        correlation = np.corrcoef(x_finite, y_finite)[0, 1]
+
+        if np.isnan(correlation):
+            return 0.0
+
+        return abs(correlation)
 
 
-class VolatilityBase(BaseIndicator):
-    """波动率指标基类"""
-    
-    def __init__(self, name: str):
-        super().__init__(name)
-    
-    def _calculate_std(self, values: pd.Series, period: int) -> pd.Series:
-        """
-        计算标准差
-        
-        Args:
-            values: 值序列
-            period: 周期
-            
-        Returns:
-            pd.Series: 标准差
-        """
-        return values.rolling(window=period).std()
-
-
-class VolumeBase(BaseIndicator):
+class VolumeIndicatorBase(BaseIndicator):
     """成交量指标基类"""
-    
-    def __init__(self, name: str):
-        super().__init__(name)
-    
-    def _validate_volume(self, df: pd.DataFrame) -> None:
-        """
-        验证成交量数据
-        
-        Args:
-            df: K线数据
-            
-        Raises:
-            ValueError: 成交量验证失败
-        """
-        if 'volume' not in df.columns:
-            raise ValueError("Volume column is required")
-        
-        if (df['volume'] < 0).any():
-            raise ValueError("Volume cannot be negative")
 
+    def __init__(self, name: str, use_talib: bool = True):
+        super().__init__(name, use_talib)
 
-class IndicatorPipeline:
-    """
-    指标计算流水线
-    支持批量计算多个指标
-    """
-    
-    def __init__(self):
-        """初始化流水线"""
-        self.indicators: List[BaseIndicator] = []
-    
-    def add_indicator(self, indicator: BaseIndicator) -> 'IndicatorPipeline':
-        """
-        添加指标
-        
-        Args:
-            indicator: 指标实例
-            
-        Returns:
-            IndicatorPipeline: 自身（支持链式调用）
-        """
-        self.indicators.append(indicator)
-        return self
-    
-    def calculate(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
-        """
-        计算所有指标
-        
-        Args:
-            df: K线数据
-            **kwargs: 指标参数
-            
-        Returns:
-            pd.DataFrame: 包含所有指标的数据
-        """
-        result = df.copy()
-        
-        for indicator in self.indicators:
-            try:
-                result = indicator.calculate(result, **kwargs)
-            except Exception as e:
-                console.print(f"Error calculating {indicator.name}: {e}")
-                continue
-        
-        return result
-    
-    def clear(self) -> None:
-        """清空所有指标"""
-        self.indicators.clear()
-    
-    def __len__(self) -> int:
-        return len(self.indicators)
-    
-    def __repr__(self) -> str:
-        indicator_names = [ind.name for ind in self.indicators]
-        return f"IndicatorPipeline(indicators={indicator_names})"
+    def validate_volume_data(self, df: pd.DataFrame, volume_column: str = 'volume') -> None:
+        """验证成交量数据"""
+        if volume_column not in df.columns:
+            raise ValueError(f"缺少成交量列: {volume_column}")
 
+        volume_data = df[volume_column]
+        if (volume_data < 0).any():
+            raise ValueError("成交量不能为负数")
 
-def validate_ohlcv(df: pd.DataFrame) -> None:
-    """
-    验证OHLCV数据完整性
-    
-    Args:
-        df: K线数据
-        
-    Raises:
-        ValueError: 数据验证失败
-    """
-    required = ['open', 'high', 'low', 'close', 'volume']
-    missing = set(required) - set(df.columns)
-    
-    if missing:
-        raise ValueError(f"Missing required columns: {missing}")
-    
-    # 检查OHLC逻辑
-    invalid_rows = (
-        (df['high'] < df['low']) |
-        (df['high'] < df['open']) |
-        (df['high'] < df['close']) |
-        (df['low'] > df['open']) |
-        (df['low'] > df['close'])
-    )
-    
-    if invalid_rows.any():
-        raise ValueError(
-            f"Invalid OHLC data found in {invalid_rows.sum()} rows"
-        )
-
-
-def validate_series(series: pd.Series, name: str) -> None:
-    """
-    验证序列数据
-    
-    Args:
-        series: 数据序列
-        name: 序列名称
-        
-    Raises:
-        ValueError: 数据验证失败
-    """
-    if series.empty:
-        raise ValueError(f"{name} is empty")
-    
-    if series.isna().all():
-        raise ValueError(f"{name} contains only NaN values")
+        zero_volume_ratio = (volume_data == 0).sum() / len(volume_data)
+        if zero_volume_ratio > 0.1:
+            console.print(f"警告: {zero_volume_ratio:.1%} 的成交量为0", style="yellow")

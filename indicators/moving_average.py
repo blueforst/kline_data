@@ -5,48 +5,72 @@ import numpy as np
 from typing import Optional, Union
 
 from .base import MovingAverageBase
+from .talib_adapter import talib_adapter
 
 from rich.console import Console
 console = Console()
 
 
-
 class SMA(MovingAverageBase):
     """
     简单移动平均 (Simple Moving Average)
+
+    支持构造函数参数和计算时参数两种方式
     """
-    
-    def __init__(self):
-        super().__init__('SMA')
+
+    def __init__(self, period: int = 20, use_talib: bool = True):
+        """
+        初始化SMA指标
+
+        Args:
+            period: 移动平均周期
+            use_talib: 是否使用TA-Lib
+        """
+        super().__init__('SMA', use_talib=use_talib)
+        self.period = period
+        self._params['period'] = period
     
     def calculate(
         self,
         df: pd.DataFrame,
-        period: int = 20,
+        period: Optional[int] = None,
         column: str = 'close',
         name: Optional[str] = None
     ) -> pd.DataFrame:
         """
         计算SMA
-        
+
         Args:
             df: K线数据
-            period: 周期
+            period: 周期（覆盖构造函数中的值）
             column: 计算列
             name: 输出列名
-            
+
         Returns:
-            pd.DataFrame: 包含SMA的数据
+            包含SMA的数据
         """
+        # 使用传入的period或构造函数的period
+        actual_period = period or self.period
+
         self.validate_data(df, [column])
-        self._validate_period(period, len(df))
-        
+        self._validate_period(actual_period, len(df))
+
         result = df.copy()
-        col_name = name or f'sma_{period}'
-        
-        result[col_name] = result[column].rolling(window=period).mean()
-        
+        col_name = name or f'sma_{actual_period}'
+
+        if self.use_talib and talib_adapter.is_available():
+            # 使用TA-Lib计算
+            result[col_name] = talib_adapter.sma(result[column], actual_period)
+        else:
+            # 使用Pandas计算
+            result[col_name] = result[column].rolling(window=actual_period).mean()
+
         return result
+
+    def get_required_length(self, period: Optional[int] = None) -> int:
+        """获取计算所需的最小数据长度"""
+        actual_period = period or self.period
+        return actual_period
 
 
 class EMA(MovingAverageBase):

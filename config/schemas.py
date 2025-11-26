@@ -375,3 +375,7 @@ class Config(BaseModel):
 
         log_path = Path(self.system.log_path)
         log_path.mkdir(parents=True, exist_ok=True)
+
+
+# 别名以便测试导入
+ConfigSchema = Config

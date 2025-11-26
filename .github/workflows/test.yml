@@ -1,0 +1,381 @@
+name: 🧪 Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  PYTHON_DEFAULT_VERSION: "3.11"
+
+jobs:
+  # 基础测试矩阵
+  test-matrix:
+    name: 🐍 Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+        include:
+          # 为主分支添加额外测试
+          - os: ubuntu-latest
+            python-version: "3.11"
+            run-integration: true
+            run-performance: true
+          - os: ubuntu-latest
+            python-version: "3.11"
+            run-integration: true
+            run-coverage: true
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: 📦 Install system dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential ta-lib-dev libcurl4-openssl-dev
+
+    - name: 📦 Install system dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install ta-lib
+
+    - name: 📦 Install system dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install ta-lib
+
+    - name: 📦 Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-xdist pytest-mock pytest-benchmark
+        pip install factory-boy faker hypothesis freezegun responses aioresponses bandit safety
+
+    - name: 🔧 Verify installation
+      run: |
+        python -c "import pandas as pd; print(f'pandas: {pd.__version__}')"
+        python -c "import numpy as np; print(f'numpy: {np.__version__}')"
+        python -c "import ccxt; print(f'ccxt: {ccxt.__version__}')"
+
+    - name: 🧪 Run unit tests
+      run: |
+        pytest tests/ -m "unit and not slow and not network" \
+          --cov=. \
+          --cov-report=xml \
+          --cov-report=term-missing \
+          --cov-fail-under=75 \
+          --junit-xml=junit-unit.xml \
+          -v
+
+    - name: 🧪 Run integration tests
+      if: matrix.run-integration
+      run: |
+        pytest tests/ -m "integration and not slow and not network" \
+          --cov-append \
+          --cov-report=xml \
+          --cov-fail-under=80 \
+          --junit-xml=junit-integration.xml \
+          -v
+
+    - name: 🚀 Run performance tests
+      if: matrix.run-performance
+      run: |
+        pytest tests/ -m "performance" \
+          --benchmark-only \
+          --benchmark-json=benchmark.json \
+          --benchmark-min-rounds=3 \
+          -v
+
+    - name: 📊 Generate coverage report
+      if: matrix.run-coverage
+      run: |
+        pytest tests/ \
+          --cov=. \
+          --cov-report=html:htmlcov \
+          --cov-report=xml \
+          --cov-fail-under=85 \
+          --cov-report=term-missing \
+          -v
+
+    - name: 📤 Upload coverage to Codecov
+      if: matrix.run-coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: true
+
+    - name: 📤 Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
+        path: |
+          junit-*.xml
+          htmlcov/
+          benchmark.json
+        retention-days: 30
+
+  # 安全扫描
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+
+    - name: 📦 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety
+
+    - name: 🔍 Run Bandit security scan
+      run: |
+        bandit -r . -f json -o bandit-report.json || true
+        bandit -r . -f txt -o bandit-report.txt || true
+
+    - name: 🔍 Run Safety dependency check
+      run: |
+        safety check --json --output safety-report.json || true
+        safety check --output safety-report.txt || true
+
+    - name: 📤 Upload security reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: |
+          bandit-report.*
+          safety-report.*
+        retention-days: 30
+
+  # 代码质量检查
+  code-quality:
+    name: ✅ Code Quality
+    runs-on: ubuntu-latest
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+
+    - name: 📦 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 mypy black isort
+
+    - name: 🔍 Run flake8 linting
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: 🔍 Run mypy type checking
+      run: |
+        mypy . --ignore-missing-imports --no-strict-optional || true
+
+    - name: 🎨 Check code formatting with black
+      run: |
+        black --check --diff . || true
+
+    - name: 🎨 Check import sorting with isort
+      run: |
+        isort --check-only --diff . || true
+
+  # 构建测试
+  build-test:
+    name: 🏗️ Build Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: 📦 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+
+    - name: 🏗️ Build package
+      run: |
+        python -m build
+
+    - name: ✅ Check package
+      run: |
+        twine check dist/*
+
+    - name: 📤 Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist-py${{ matrix.python-version }}
+        path: dist/
+        retention-days: 7
+
+  # 文档构建测试
+  docs-build:
+    name: 📚 Documentation Build
+    runs-on: ubuntu-latest
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+
+    - name: 📦 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install sphinx sphinx-rtd-theme
+
+    - name: 📚 Build documentation
+      run: |
+        cd docs
+        make html || true
+
+    - name: 📤 Upload documentation
+      uses: actions/upload-artifact@v3
+      if: success()
+      with:
+        name: documentation
+        path: docs/_build/html/
+        retention-days: 7
+
+  # 性能回归检测
+  performance-regression:
+    name: 📈 Performance Regression
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+
+    - name: 📦 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-benchmark
+
+    - name: 📥 Download baseline benchmark
+      uses: actions/download-artifact@v3
+      with:
+        name: benchmark-results
+        path: .benchmarks/
+      continue-on-error: true
+
+    - name: 🚀 Run performance tests
+      run: |
+        pytest tests/performance/ \
+          --benchmark-only \
+          --benchmark-json=benchmark-new.json \
+          --benchmark-compare=.benchmarks/benchmark-baseline.json || true
+
+    - name: 📊 Compare performance
+      run: |
+        python -c "
+        import json
+        import sys
+
+        try:
+            with open('benchmark-new.json') as f:
+                new_data = json.load(f)
+            print('Performance results:')
+            for bench in new_data.get('benchmarks', []):
+                name = bench.get('name', 'unknown')
+                time = bench.get('stats', {}).get('mean', 0)
+                print(f'  {name}: {time*1000:.2f}ms')
+        except Exception as e:
+            print(f'Error reading benchmark results: {e}')
+        "
+
+  # 测试结果汇总
+  test-summary:
+    name: 📋 Test Summary
+    runs-on: ubuntu-latest
+    needs: [test-matrix, security-scan, code-quality, build-test]
+    if: always()
+    steps:
+    - name: 📥 Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: all-artifacts/
+
+    - name: 📋 Generate summary
+      run: |
+        echo "## 🧪 Test Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # 测试矩阵状态
+        echo "### Test Matrix Status:" >> $GITHUB_STEP_SUMMARY
+        echo "- Test Matrix: ${{ needs.test-matrix.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Security Scan: ${{ needs.security-scan.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Code Quality: ${{ needs.code-quality.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Build Test: ${{ needs.build-test.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # 下载的文件
+        echo "### Artifacts Downloaded:" >> $GITHUB_STEP_SUMMARY
+        find all-artifacts -type f -name "*.xml" -o -name "*.json" -o -name "*.txt" | head -10 | while read file; do
+          echo "- $(basename $file)" >> $GITHUB_STEP_SUMMARY
+        done
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # 覆盖率信息
+        if [ -f "all-artifacts/coverage.xml" ]; then
+          echo "### 📊 Coverage Information:" >> $GITHUB_STEP_SUMMARY
+          echo "- Coverage report generated successfully" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # 基准测试信息
+        if [ -f "all-artifacts/benchmark.json" ]; then
+          echo "### 🚀 Performance Benchmarks:" >> $GITHUB_STEP_SUMMARY
+          echo "- Benchmark results available" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: 🎯 Create test status badge
+      if: always()
+      run: |
+        if [[ "${{ needs.test-matrix.result }}" == "success" && "${{ needs.security-scan.result }}" == "success" && "${{ needs.code-quality.result }}" == "success" ]]; then
+          echo "🟢 All checks passed!" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "🔴 Some checks failed. Please review the details above." >> $GITHUB_STEP_SUMMARY
+        fi
+
+# 工作流配置
+  # 并发控制
+  concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true

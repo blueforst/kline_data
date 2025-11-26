@@ -9,6 +9,9 @@ from pathlib import Path
 
 from .api import create_app
 
+# 导出app以便测试使用
+app = create_app()
+
 
 def setup_logging(log_level: str = "INFO"):
     """配置日志"""
