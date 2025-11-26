@@ -178,7 +178,28 @@ class TrendIndicatorBase(BaseIndicator):
         return abs(correlation)
 
 
-class VolumeIndicatorBase(BaseIndicator):
+class VolatilityBase(BaseIndicator):
+    """波动率指标基类"""
+
+    def __init__(self, name: str, use_talib: bool = True):
+        super().__init__(name, use_talib)
+
+    def validate_high_low_data(self, df: pd.DataFrame) -> None:
+        """验证高低价数据"""
+        required_columns = ['high', 'low', 'close']
+        missing = [col for col in required_columns if col not in df.columns]
+        if missing:
+            raise ValueError(f"缺少必需列: {missing}")
+
+        # 验证高低价的合理性
+        if (df['high'] < df['low']).any():
+            raise ValueError("存在高价低于低价的数据")
+
+        if (df['close'] > df['high']).any() or (df['close'] < df['low']).any():
+            console.print("警告: 存在收盘价超出高低价范围的数据", style="yellow")
+
+
+class VolumeBase(BaseIndicator):
     """成交量指标基类"""
 
     def __init__(self, name: str, use_talib: bool = True):
@@ -196,3 +217,43 @@ class VolumeIndicatorBase(BaseIndicator):
         zero_volume_ratio = (volume_data == 0).sum() / len(volume_data)
         if zero_volume_ratio > 0.1:
             console.print(f"警告: {zero_volume_ratio:.1%} 的成交量为0", style="yellow")
+
+
+class IndicatorPipeline:
+    """指标计算流水线"""
+
+    def __init__(self):
+        self.indicators: List[BaseIndicator] = []
+
+    def add_indicator(self, indicator: BaseIndicator) -> 'IndicatorPipeline':
+        """添加指标到流水线"""
+        self.indicators.append(indicator)
+        return self
+
+    def calculate(self, df: pd.DataFrame) -> pd.DataFrame:
+        """执行流水线计算"""
+        result = df.copy()
+        for indicator in self.indicators:
+            result = indicator.calculate(result)
+        return result
+
+
+def validate_ohlcv(df: pd.DataFrame, require_volume: bool = False) -> None:
+    """验证OHLCV数据格式"""
+    required = ['open', 'high', 'low', 'close']
+    if require_volume:
+        required.append('volume')
+
+    missing = [col for col in required if col not in df.columns]
+    if missing:
+        raise ValueError(f"缺少必需列: {missing}")
+
+    if df.empty:
+        raise ValueError("数据不能为空")
+
+    # 验证价格数据合理性
+    if (df['high'] < df['low']).any():
+        raise ValueError("存在高价低于低价的数据")
+
+    if (df['close'] > df['high']).any() or (df['close'] < df['low']).any():
+        console.print("警告: 存在收盘价超出高低价范围的数据", style="yellow")

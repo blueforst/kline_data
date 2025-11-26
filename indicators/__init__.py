@@ -96,6 +96,22 @@ from .manager import (
     list_available_indicators,
 )
 
+# TA-Lib适配器
+from .talib_adapter import talib_adapter, TALIB_AVAILABLE
+
+# 工具函数
+from .utils import (
+    ensure_series,
+    ensure_dataframe,
+    normalize_ohlcv_columns,
+    validate_price_data,
+    calculate_returns,
+    crossover,
+    crossunder,
+    smooth_series,
+    resample_ohlcv,
+)
+
 __all__ = [
     # Base
     'BaseIndicator',
@@ -174,4 +190,19 @@ __all__ = [
     'get_indicator_manager',
     'calculate_indicator',
     'list_available_indicators',
+    
+    # Adapter
+    'talib_adapter',
+    'TALIB_AVAILABLE',
+    
+    # Utils
+    'ensure_series',
+    'ensure_dataframe',
+    'normalize_ohlcv_columns',
+    'validate_price_data',
+    'calculate_returns',
+    'crossover',
+    'crossunder',
+    'smooth_series',
+    'resample_ohlcv',
 ]
