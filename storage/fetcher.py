@@ -177,21 +177,13 @@ class DataFetcher:
             )
         
         elif decision.source == 'ccxt':
-            # 从交易所下载
+            # 从交易所下载（download方法是同步的，会阻塞直到完成）
             console.print(f"Downloading {interval} data from {exchange}...")
             task_id = self.download_mgr.download(
                 exchange, symbol, start_time, end_time, interval
             )
             
-            # 等待下载完成（简化版，实际应该有进度监控）
-            import time
-            while True:
-                task = self.download_mgr.get_task_status(task_id)
-                if task and task.status in ['COMPLETED', 'FAILED']:
-                    break
-                time.sleep(1)
-            
-            # 读取数据
+            # download方法已经同步完成，直接读取数据
             return self.reader.read_range(
                 exchange, symbol, start_time, end_time, interval
             )
@@ -206,21 +198,14 @@ class DataFetcher:
             )
         
         elif decision.source == 'hybrid':
-            # 先下载，再重采样
+            # 先下载，再重采样（download方法是同步的）
             console.print(f"Downloading {decision.download_interval} data from {exchange}...")
             task_id = self.download_mgr.download(
                 exchange, symbol, start_time, end_time,
                 decision.download_interval
             )
             
-            # 等待下载完成
-            import time
-            while True:
-                task = self.download_mgr.get_task_status(task_id)
-                if task and task.status in ['COMPLETED', 'FAILED']:
-                    break
-                time.sleep(1)
-            
+            # download方法已经同步完成
             # 如果下载的就是目标周期，直接返回
             if decision.download_interval == interval:
                 return self.reader.read_range(

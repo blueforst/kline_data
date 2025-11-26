@@ -101,29 +101,45 @@ class KlineClient:
         """
         获取K线数据（智能模式）
         
+        智能策略优先级（auto_strategy=True时）：
+        1. 本地有完整数据 -> 直接读取本地（最快）
+        2. 交易所原生支持 -> 直接下载对应周期（推荐）
+        3. 交易所部分支持 -> 下载最接近的小周期后重采样
+        4. 回退策略 -> 从本地更小周期重采样（仅当交易所无法获取时）
+        
+        注意：优先从交易所下载，本地重采样仅作为回退策略，
+             因为从1s数据重采样大周期（如1个月4h）效率远低于直接下载。
+        
         Args:
             exchange: 交易所
             symbol: 交易对
             start_time: 开始时间
             end_time: 结束时间
             interval: 时间周期（如 '1m', '5m', '1h', '1d', '1w'）
-            auto_strategy: 是否自动选择策略（默认True）
+            auto_strategy: 是否自动选择策略（默认True，强烈推荐）
+                          设为False则只从本地读取，不会自动下载或重采样
             force_strategy: 强制使用策略 ('local', 'ccxt', 'resample')
+                          - 'local': 只读取本地，不下载不重采样
+                          - 'ccxt': 强制从交易所下载对应周期
+                          - 'resample': 强制从本地更小周期重采样
             with_indicators: 附加计算的指标列表
 
         Returns:
             pd.DataFrame: K线数据
 
         Example:
-            >>> # 获取币安BTC/USDT的周线数据（自动选择最优策略）
+            >>> # 示例1: 自动智能获取（推荐）
+            >>> # 系统会自动判断：本地读取/重采样/下载
             >>> df = client.get_kline(
             ...     DEFAULT_EXCHANGE, DEFAULT_SYMBOL,
             ...     datetime(2020, 1, 1),
             ...     datetime(2024, 1, 1),
-            ...     interval=Timeframe.W1.value
+            ...     interval=Timeframe.W1.value  # 周线
             ... )
+            >>> # 如果本地有1s或更小周期数据，会自动重采样
+            >>> # 如果没有，会下载周线数据
 
-            >>> # 强制从交易所直接下载
+            >>> # 示例2: 强制从交易所直接下载
             >>> df = client.get_kline(
             ...     DEFAULT_EXCHANGE, DEFAULT_SYMBOL,
             ...     datetime(2023, 1, 1),
@@ -132,7 +148,16 @@ class KlineClient:
             ...     force_strategy='ccxt'
             ... )
 
-            >>> # 获取数据并计算指标
+            >>> # 示例3: 强制从本地1s数据重采样
+            >>> df = client.get_kline(
+            ...     DEFAULT_EXCHANGE, DEFAULT_SYMBOL,
+            ...     datetime(2024, 1, 1),
+            ...     datetime(2024, 2, 1),
+            ...     interval=Timeframe.H1.value,
+            ...     force_strategy='resample'
+            ... )
+
+            >>> # 示例4: 获取数据并计算指标
             >>> df = client.get_kline(
             ...     DEFAULT_EXCHANGE, DEFAULT_SYMBOL,
             ...     datetime(2024, 1, 1),
