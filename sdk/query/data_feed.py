@@ -15,7 +15,6 @@ from datetime import datetime, timedelta
 import logging
 
 from config import Config
-from reader import ParquetReader
 from utils.constants import (
     Timeframe,
     DEFAULT_QUERY_INTERVAL,
@@ -25,6 +24,7 @@ from utils.constants import (
     validate_symbol,
 )
 from utils.timezone import to_utc
+from .query_client import QueryClient
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ class ChunkedDataFeed:
             config = load_config()
         
         self.config = config
-        self.reader = ParquetReader(config)
+        self.query_client = QueryClient(config)
         
         # 状态管理
         self._current_chunk: Optional[pd.DataFrame] = None
@@ -174,13 +174,14 @@ class ChunkedDataFeed:
                 self.end_time
             )
             
-            # 读取数据
-            df = self.reader.read_range(
+            # 使用QueryClient获取数据（支持自动下载）
+            df = self.query_client.get_kline(
                 exchange=self.exchange,
                 symbol=self.symbol,
                 start_time=chunk_start,
                 end_time=chunk_end,
-                interval=self.interval
+                interval=self.interval,
+                auto_strategy=True  # 自动下载缺失数据
             )
             
             if df.empty:
@@ -190,12 +191,13 @@ class ChunkedDataFeed:
                     chunk_start + timedelta(days=30),  # 扩展到30天
                     self.end_time
                 )
-                df = self.reader.read_range(
+                df = self.query_client.get_kline(
                     exchange=self.exchange,
                     symbol=self.symbol,
                     start_time=chunk_start,
                     end_time=chunk_end,
-                    interval=self.interval
+                    interval=self.interval,
+                    auto_strategy=True
                 )
                 
                 if df.empty:

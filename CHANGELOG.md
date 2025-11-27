@@ -2,6 +2,99 @@
 
 所有重要的变更都将记录在此文件中。
 
+## [2.0.1] - 2024-11-27
+
+### 🧹 代码清理
+
+#### Changed
+- **核心文件重命名**: `unified_client.py` → `sdk_client.py`
+  - 命名更清晰直观
+  - 保持向后兼容（导入方式不变）
+
+#### Removed
+- **归档废弃文件**
+  - `sdk/client.py` → `sdk/archived/client.py`
+  - `sdk/data_feed.py` → `sdk/archived/data_feed.py`
+  - 创建归档说明文档
+
+#### Added
+- **新文档**
+  - `docs/DATA_FEED_GUIDE.md` - 全新的数据流使用指南
+  - `sdk/archived/README.md` - 归档文件说明
+  - `docs/CLEANUP_SUMMARY.md` - 清理总结
+
+#### Benefits
+- ✅ 代码结构更清晰
+- ✅ 废弃代码已隔离
+- ✅ 文档更完整
+
+---
+
+## [2.0.0] - 2024-11-27
+
+### 🎉 重大重构 - SDK模块化
+
+#### Added
+- **新的模块化SDK结构**
+  - `QueryClient`: 数据查询客户端（含数据流支持）
+  - `DownloadClient`: 数据下载管理客户端
+  - `ResampleClient`: 数据重采样客户端
+  - `IndicatorClient`: 技术指标计算客户端
+  - `MetadataClient`: 元数据查询客户端
+  - `KlineClient`: 统一客户端（整合所有功能）
+
+- **数据流自动下载支持**
+  - `ChunkedDataFeed`现在使用`QueryClient`，支持自动下载缺失数据
+  - `BacktraderDataFeed`同样支持自动下载
+  - `StreamingDataFeed`支持实时模拟和自动下载
+
+
+### 🎉 重大重构 - SDK模块化
+
+#### Added
+- **新的模块化SDK结构**
+  - `QueryClient`: 数据查询客户端（含数据流支持）
+  - `DownloadClient`: 数据下载管理客户端
+  - `ResampleClient`: 数据重采样客户端
+  - `IndicatorClient`: 技术指标计算客户端
+  - `MetadataClient`: 元数据查询客户端
+  - `KlineClient`: 统一客户端（整合所有功能）
+
+- **数据流自动下载支持**
+  - `ChunkedDataFeed`现在使用`QueryClient`，支持自动下载缺失数据
+  - `BacktraderDataFeed`同样支持自动下载
+  - `StreamingDataFeed`支持实时模拟和自动下载
+
+- **新的文档**
+  - `sdk/README.md`: SDK模块使用文档
+  - `docs/SDK_REFACTORING_GUIDE.md`: 详细迁移指南
+  - `docs/REFACTORING_SUMMARY.md`: 重构总结
+  - `examples/sdk_refactored_example.py`: 使用示例
+
+#### Changed
+- **统一的数据获取逻辑**: 所有数据获取都使用相同的智能策略
+- **API方法重命名**: download→download_kline, update→update_kline等
+
+#### Deprecated
+- `sdk.client.KlineClient`: 使用`from sdk import KlineClient`替代
+- `sdk.data_feed`: 使用`from sdk import ChunkedDataFeed`替代
+
+#### Fixed
+- **关键问题**: `ChunkedDataFeed`获取未下载数据时返回空数据
+- 解决方案: 使用`QueryClient`支持自动下载
+
+详见: docs/SDK_REFACTORING_GUIDE.md
+
+---
+
+## [Unreleased]
+
+### 🎨 改进 CLI 进度条显示体验 (2024-11-24)
+
+# 变更日志
+
+所有重要的变更都将记录在此文件中。
+
 ## [Unreleased]
 
 ### 🎨 改进 CLI 进度条显示体验 (2024-11-24)

@@ -1,63 +1,97 @@
-# 数据流使用指南 (Data Feed Guide)
+# 数据流使用指南
 
 ## 概述
 
-数据流模块提供了内存高效的分块数据读取功能，特别适合大规模回测场景和实时策略测试。支持与 backtrader 等回测框架无缝集成。
+数据流（Data Feed）提供内存高效的K线数据迭代功能，特别适合：
+- 大规模回测（避免一次性加载全部数据到内存）
+- 实时策略测试
+- Backtrader等回测框架集成
 
-## 核心特性
+**核心特性**：
+- ✅ 分块加载，内存高效
+- ✅ **自动下载缺失数据**（新功能！）
+- ✅ 多种迭代方式（块、行、字典）
+- ✅ 支持多种回测框架
 
-- ✅ **内存高效**: 分块加载数据，避免一次性加载大量数据到内存
-- ✅ **灵活迭代**: 支持块级、行级、字典格式的多种迭代方式
-- ✅ **Backtrader集成**: 提供与 backtrader 完全兼容的数据格式
-- ✅ **流式模拟**: 支持实时数据流模拟，可控播放速度
-- ✅ **自动边界处理**: 智能处理数据分区和时间边界
+## 快速开始
 
-## 三种数据流类型
-
-### 1. ChunkedDataFeed - 基础分块数据流
-
-最基础的数据流类，提供分块读取功能。
+### 基本用法
 
 ```python
+from sdk import KlineClient
 from datetime import datetime
-from sdk import ChunkedDataFeed
+
+client = KlineClient()
 
 # 创建数据流
-feed = ChunkedDataFeed(
+feed = client.create_data_feed(
     exchange='binance',
     symbol='BTC/USDT',
     start_time=datetime(2020, 1, 1),
     end_time=datetime(2024, 1, 1),
     interval='1h',
-    chunk_size=10000  # 每次加载10000条数据
+    chunk_size=10000  # 每次加载10000条
 )
 
-# 方式1: 按块迭代
-for chunk_df in feed:
-    print(f"加载了 {len(chunk_df)} 条数据")
+# 迭代数据块
+for chunk in feed:
+    print(f"Processing {len(chunk)} bars")
     # 处理数据块
-    process_chunk(chunk_df)
+    process_chunk(chunk)
+```
 
+## 数据流类型
+
+### 1. ChunkedDataFeed - 分块数据流
+
+内存高效的分块迭代器，适合处理大数据集。
+
+```python
+from sdk import KlineClient
+
+client = KlineClient()
+
+feed = client.create_data_feed(
+    exchange='binance',
+    symbol='BTC/USDT',
+    start_time=datetime(2020, 1, 1),
+    end_time=datetime(2024, 1, 1),
+    interval='1h',
+    chunk_size=10000
+)
+
+# 方式1: 迭代数据块（推荐）
+for chunk_df in feed:
+    # chunk_df是pandas DataFrame
+    print(f"Chunk shape: {chunk_df.shape}")
+    print(f"Columns: {chunk_df.columns.tolist()}")
+    
 # 方式2: 逐行迭代
 for timestamp, open_price, high, low, close, volume in feed.iter_rows():
-    # 处理单根K线
-    strategy.on_bar(timestamp, open_price, high, low, close, volume)
+    # 处理每根K线
+    execute_strategy(timestamp, open_price, high, low, close, volume)
 
 # 方式3: 字典格式迭代
 for bar in feed.iter_dicts():
-    print(f"时间: {bar['timestamp']}, 收盘价: {bar['close']}")
+    print(f"Time: {bar['timestamp']}, Close: {bar['close']}")
+    
+# 方式4: 转换为完整DataFrame（注意内存！）
+df = feed.to_dataframe(max_rows=100000)
 ```
 
-### 2. BacktraderDataFeed - Backtrader专用数据流
+### 2. BacktraderDataFeed - Backtrader集成
 
-提供与 backtrader 完全兼容的数据格式。
+与Backtrader完美集成的数据流。
 
 ```python
 import backtrader as bt
-from sdk import BacktraderDataFeed
+from sdk import KlineClient
+from datetime import datetime
 
-# 创建数据流
-data_feed = BacktraderDataFeed(
+client = KlineClient()
+
+# 创建Backtrader数据流
+feed = client.create_backtrader_feed(
     exchange='binance',
     symbol='BTC/USDT',
     start_time=datetime(2023, 1, 1),
@@ -65,114 +99,214 @@ data_feed = BacktraderDataFeed(
     interval='1h'
 )
 
-# 转换为backtrader格式
+# 转换为Backtrader格式
 bt_data = bt.feeds.PandasData(
-    dataname=data_feed.to_backtrader_format(),
-    **data_feed.get_backtrader_params()
+    dataname=feed.to_backtrader_format(),
+    **feed.get_backtrader_params()
 )
 
-# 创建回测引擎
+# 添加到Cerebro
 cerebro = bt.Cerebro()
 cerebro.adddata(bt_data)
-cerebro.addstrategy(YourStrategy)
-
-# 运行回测
-results = cerebro.run()
-cerebro.plot()
+cerebro.addstrategy(MyStrategy)
+cerebro.run()
 ```
 
-### 3. StreamingDataFeed - 流式数据源
+### 3. StreamingDataFeed - 实时模拟
 
-模拟实时数据流，支持可控的播放速度。
+模拟实时数据流，用于实时策略测试。
 
 ```python
-from sdk import StreamingDataFeed
-import time
+from sdk import KlineClient
 
-# 创建流式数据源（100倍速播放）
-feed = StreamingDataFeed(
+client = KlineClient()
+
+# 创建流式数据源
+feed = client.create_streaming_feed(
     exchange='binance',
     symbol='BTC/USDT',
     start_time=datetime(2024, 1, 1),
     end_time=datetime(2024, 1, 2),
     interval='1m',
-    playback_speed=100.0  # 100倍速
+    playback_speed=100  # 100倍速播放
 )
 
-# 实时处理数据
+# 实时流式处理
 for bar in feed.stream():
-    print(f"新K线: {bar['timestamp']} - 收盘价: {bar['close']}")
+    print(f"New bar at {bar['timestamp']}: Close={bar['close']}")
+    
     # 执行交易逻辑
-    # ... 自动按播放速度延迟
+    if should_buy(bar):
+        execute_buy_order()
+    
+    # 自动延迟（根据playback_speed）
+    # 无需手动sleep
 ```
 
-## 初始化参数
+## 核心特性详解
 
-### 通用参数
+### 自动下载（重要！）
 
-| 参数 | 类型 | 说明 | 默认值 |
-|------|------|------|--------|
-| `exchange` | str | 交易所名称 | 必填 |
-| `symbol` | str | 交易对 | 必填 |
-| `start_time` | datetime | 开始时间 | 必填 |
-| `end_time` | datetime | 结束时间 | 必填 |
-| `interval` | str | 时间周期 | '1s' |
-| `chunk_size` | int | 每块数据大小 | 10000 |
-| `config` | Config | 配置对象 | None（使用默认） |
-| `preload_chunks` | int | 预加载块数 | 1 |
-
-### StreamingDataFeed 特有参数
-
-| 参数 | 类型 | 说明 | 默认值 |
-|------|------|------|--------|
-| `playback_speed` | float | 播放速度倍数 | 1.0 |
-
-## 使用场景
-
-### 场景1: 大数据集回测（内存高效）
-
-处理1年的分钟级数据（约50万条），不会占用过多内存：
+**与旧版的区别**：
 
 ```python
-feed = ChunkedDataFeed(
+# 旧版（问题）：如果数据不存在，返回空结果
+from sdk.data_feed import ChunkedDataFeed  # 已废弃
+feed = ChunkedDataFeed(...)
+for chunk in feed:
+    print(len(chunk))  # 可能为0
+
+# 新版（解决）：自动下载缺失数据
+from sdk import KlineClient
+client = KlineClient()
+feed = client.create_data_feed(...)
+for chunk in feed:
+    print(len(chunk))  # 保证有数据（如果交易所支持）
+```
+
+**工作原理**：
+
+数据流内部使用`QueryClient`，通过`DataFetcher`智能获取数据：
+
+```
+数据流请求 -> QueryClient -> DataFetcher
+    ├─ 检查本地是否有数据
+    ├─ 本地没有 -> 自动从交易所下载
+    └─ 返回数据给数据流
+```
+
+### 内存管理
+
+数据流使用分块加载策略，避免内存溢出：
+
+```python
+# ✅ 好：分块处理4年的1分钟数据
+feed = client.create_data_feed(
+    exchange='binance',
+    symbol='BTC/USDT',
+    start_time=datetime(2020, 1, 1),
+    end_time=datetime(2024, 1, 1),
+    interval='1m',
+    chunk_size=10000  # 每次只加载10000条到内存
+)
+
+for chunk in feed:
+    # 处理完自动释放
+    process_chunk(chunk)
+
+# ❌ 差：一次性加载全部数据（可能几百万条）
+df = client.get_kline(
+    exchange='binance',
+    symbol='BTC/USDT',
+    start_time=datetime(2020, 1, 1),
+    end_time=datetime(2024, 1, 1),
+    interval='1m'
+)  # 可能内存溢出
+```
+
+### 预加载优化
+
+数据流支持预加载下一个块，提高性能：
+
+```python
+feed = client.create_data_feed(
+    exchange='binance',
+    symbol='BTC/USDT',
+    start_time=datetime(2020, 1, 1),
+    end_time=datetime(2024, 1, 1),
+    interval='1h',
+    chunk_size=10000,
+    preload_chunks=2  # 预加载2个块
+)
+
+# 第一次迭代时，已经预加载了下一个块
+for chunk in feed:
+    process_chunk(chunk)  # 处理时，后台加载下一块
+```
+
+## 完整示例
+
+### 示例1: 简单回测
+
+```python
+from sdk import KlineClient
+from datetime import datetime
+
+client = KlineClient()
+
+# 创建数据流
+feed = client.create_data_feed(
     exchange='binance',
     symbol='BTC/USDT',
     start_time=datetime(2023, 1, 1),
     end_time=datetime(2024, 1, 1),
-    interval='1m',
-    chunk_size=10000  # 每次只加载1万条
+    interval='1h',
+    chunk_size=1000
 )
 
-total_volume = 0
-max_price = 0
+# 简单均线策略
+position = 0
+portfolio_value = 100000
 
-for chunk_df in feed:
-    total_volume += chunk_df['volume'].sum()
-    max_price = max(max_price, chunk_df['high'].max())
+for chunk in feed:
+    # 计算指标
+    chunk['MA_20'] = chunk['close'].rolling(20).mean()
+    chunk['MA_50'] = chunk['close'].rolling(50).mean()
+    
+    # 遍历每根K线
+    for _, bar in chunk.iterrows():
+        if pd.notna(bar['MA_20']) and pd.notna(bar['MA_50']):
+            # 金叉买入
+            if bar['MA_20'] > bar['MA_50'] and position == 0:
+                position = portfolio_value / bar['close']
+                portfolio_value = 0
+                print(f"Buy at {bar['close']}")
+            
+            # 死叉卖出
+            elif bar['MA_20'] < bar['MA_50'] and position > 0:
+                portfolio_value = position * bar['close']
+                position = 0
+                print(f"Sell at {bar['close']}")
 
-print(f"总成交量: {total_volume}")
-print(f"最高价: {max_price}")
+print(f"Final portfolio value: {portfolio_value}")
 ```
 
-### 场景2: Backtrader策略回测
+### 示例2: Backtrader策略
 
 ```python
 import backtrader as bt
+from sdk import KlineClient
+from datetime import datetime
 
-class MyStrategy(bt.Strategy):
+# 定义策略
+class MovingAverageStrategy(bt.Strategy):
+    params = (
+        ('fast_period', 20),
+        ('slow_period', 50),
+    )
+    
     def __init__(self):
-        self.sma = bt.indicators.SimpleMovingAverage(
-            self.data.close, period=20
+        self.fast_ma = bt.indicators.SMA(
+            self.data.close, 
+            period=self.params.fast_period
         )
+        self.slow_ma = bt.indicators.SMA(
+            self.data.close, 
+            period=self.params.slow_period
+        )
+        self.crossover = bt.indicators.CrossOver(self.fast_ma, self.slow_ma)
     
     def next(self):
-        if self.data.close[0] > self.sma[0]:
-            self.buy()
-        elif self.data.close[0] < self.sma[0]:
-            self.sell()
+        if self.crossover > 0:  # 金叉
+            if not self.position:
+                self.buy()
+        elif self.crossover < 0:  # 死叉
+            if self.position:
+                self.sell()
 
 # 创建数据流
-data_feed = BacktraderDataFeed(
+client = KlineClient()
+feed = client.create_backtrader_feed(
     exchange='binance',
     symbol='BTC/USDT',
     start_time=datetime(2023, 1, 1),
@@ -180,285 +314,305 @@ data_feed = BacktraderDataFeed(
     interval='1h'
 )
 
-# 运行回测
+# 设置Backtrader
 cerebro = bt.Cerebro()
-bt_data = bt.feeds.PandasData(
-    dataname=data_feed.to_backtrader_format(),
-    **data_feed.get_backtrader_params()
-)
-cerebro.adddata(bt_data)
-cerebro.addstrategy(MyStrategy)
-cerebro.broker.setcash(100000.0)
+cerebro.adddata(bt.feeds.PandasData(
+    dataname=feed.to_backtrader_format(),
+    **feed.get_backtrader_params()
+))
+cerebro.addstrategy(MovingAverageStrategy)
+cerebro.broker.setcash(100000)
+cerebro.broker.setcommission(commission=0.001)
+
+# 运行回测
+print(f"Starting Portfolio Value: {cerebro.broker.getvalue()}")
 cerebro.run()
+print(f"Final Portfolio Value: {cerebro.broker.getvalue()}")
 ```
 
-### 场景3: 实时策略模拟
+### 示例3: 实时模拟交易
 
 ```python
-# 模拟实时交易环境（10倍速）
-feed = StreamingDataFeed(
+from sdk import KlineClient
+from datetime import datetime
+import time
+
+client = KlineClient()
+
+# 创建实时模拟流
+feed = client.create_streaming_feed(
     exchange='binance',
     symbol='BTC/USDT',
     start_time=datetime(2024, 1, 1),
-    end_time=datetime(2024, 1, 7),
-    interval='5m',
-    playback_speed=10.0
+    end_time=datetime(2024, 1, 2),
+    interval='1m',
+    playback_speed=60  # 60倍速（1分钟K线变1秒）
 )
 
-positions = []
+# 实时策略
+position = 0
+last_prices = []
 
 for bar in feed.stream():
-    # 简单的均线策略
-    if should_buy(bar):
-        positions.append({
-            'time': bar['timestamp'],
-            'price': bar['close'],
-            'type': 'LONG'
-        })
-        print(f"买入 @ {bar['close']}")
-    elif should_sell(bar):
-        # 平仓逻辑
-        print(f"卖出 @ {bar['close']}")
+    current_price = bar['close']
+    last_prices.append(current_price)
+    
+    # 保持最近20个价格
+    if len(last_prices) > 20:
+        last_prices.pop(0)
+    
+    # 计算简单移动平均
+    if len(last_prices) >= 20:
+        ma_20 = sum(last_prices) / len(last_prices)
+        
+        # 价格突破MA买入
+        if current_price > ma_20 * 1.01 and position == 0:
+            position = 1
+            print(f"[{bar['timestamp']}] Buy at {current_price}")
+        
+        # 价格跌破MA卖出
+        elif current_price < ma_20 * 0.99 and position > 0:
+            position = 0
+            print(f"[{bar['timestamp']}] Sell at {current_price}")
+    
+    # feed.stream()会自动处理延迟
 ```
 
-### 场景4: 自定义指标计算
+### 示例4: 多周期分析
 
 ```python
-import pandas as pd
+from sdk import KlineClient
+from datetime import datetime
 
-feed = ChunkedDataFeed(
-    exchange='binance',
-    symbol='BTC/USDT',
-    start_time=datetime(2024, 1, 1),
-    end_time=datetime(2024, 2, 1),
-    interval='1h',
-    chunk_size=200
-)
+client = KlineClient()
 
-# 维护跨块的状态
-prev_ma_short = None
-prev_ma_long = None
-signals = []
+# 创建多个周期的数据流
+feeds = {
+    '1h': client.create_data_feed(
+        'binance', 'BTC/USDT',
+        datetime(2024, 1, 1), datetime(2024, 1, 2),
+        '1h', chunk_size=100
+    ),
+    '4h': client.create_data_feed(
+        'binance', 'BTC/USDT',
+        datetime(2024, 1, 1), datetime(2024, 1, 2),
+        '4h', chunk_size=100
+    ),
+}
 
-for chunk_df in feed:
-    # 计算移动平均
-    chunk_df['MA_10'] = chunk_df['close'].rolling(window=10).mean()
-    chunk_df['MA_20'] = chunk_df['close'].rolling(window=20).mean()
+# 分析不同周期
+for interval, feed in feeds.items():
+    print(f"\n=== {interval} 周期分析 ===")
     
-    # 检测交叉信号
-    for idx, row in chunk_df.iterrows():
-        ma_short = row['MA_10']
-        ma_long = row['MA_20']
+    total_bars = 0
+    for chunk in feed:
+        total_bars += len(chunk)
         
-        if pd.notna(ma_short) and pd.notna(ma_long):
-            if prev_ma_short and prev_ma_long:
-                # 金叉
-                if prev_ma_short < prev_ma_long and ma_short > ma_long:
-                    signals.append(('BUY', row['timestamp'], row['close']))
-                # 死叉
-                elif prev_ma_short > prev_ma_long and ma_short < ma_long:
-                    signals.append(('SELL', row['timestamp'], row['close']))
-            
-            prev_ma_short = ma_short
-            prev_ma_long = ma_long
-
-print(f"检测到 {len(signals)} 个交易信号")
+        # 计算统计信息
+        avg_volume = chunk['volume'].mean()
+        price_range = chunk['high'].max() - chunk['low'].min()
+        
+        print(f"Chunk: {len(chunk)} bars, "
+              f"Avg Volume: {avg_volume:.2f}, "
+              f"Price Range: {price_range:.2f}")
+    
+    print(f"Total {total_bars} bars processed")
 ```
 
-## API 参考
+## 高级功能
 
-### ChunkedDataFeed
+### 数据流状态管理
 
-#### 方法
+```python
+feed = client.create_data_feed(...)
 
-**`__iter__() -> Iterator[pd.DataFrame]`**
-- 迭代数据块
-- 返回: 数据块迭代器
+# 获取统计信息
+stats = feed.get_stats()
+print(f"已加载块数: {stats['chunks_loaded']}")
+print(f"已加载行数: {stats['total_rows_loaded']}")
+print(f"是否耗尽: {stats['is_exhausted']}")
 
-**`iter_rows() -> Iterator[Tuple]`**
-- 逐行迭代数据
-- 返回: (timestamp, open, high, low, close, volume) 元组
+# 重置数据流
+feed.reset()  # 回到起始位置
 
-**`iter_dicts() -> Iterator[dict]`**
-- 以字典格式迭代
-- 返回: K线数据字典
+# 再次迭代
+for chunk in feed:
+    process_chunk(chunk)
+```
 
-**`to_dataframe(max_rows=None) -> pd.DataFrame`**
-- 将所有数据加载为单个DataFrame
-- 参数: `max_rows` - 最大行数限制
-- 返回: 完整数据DataFrame
+### 自定义迭代逻辑
 
-**`reset() -> None`**
-- 重置迭代器到起始位置
+```python
+feed = client.create_data_feed(...)
 
-**`get_stats() -> dict`**
-- 获取数据流统计信息
-- 返回: 统计信息字典
+# 自定义处理
+def custom_processor(chunk):
+    # 添加自定义列
+    chunk['custom_indicator'] = (chunk['high'] + chunk['low']) / 2
+    return chunk
 
-### BacktraderDataFeed
+for chunk in feed:
+    processed_chunk = custom_processor(chunk)
+    # 使用处理后的数据
+    analyze(processed_chunk)
+```
 
-继承自 `ChunkedDataFeed`，额外提供：
+### 错误处理
 
-**`to_backtrader_format(max_rows=None) -> pd.DataFrame`**
-- 转换为backtrader标准格式
-- 参数: `max_rows` - 最大行数
-- 返回: backtrader格式的DataFrame
+```python
+feed = client.create_data_feed(...)
 
-**`get_backtrader_params() -> dict`**
-- 获取backtrader PandasData的参数配置
-- 返回: 参数字典
-
-### StreamingDataFeed
-
-继承自 `ChunkedDataFeed`，额外提供：
-
-**`stream() -> Iterator[dict]`**
-- 流式推送数据（带延迟）
-- 返回: K线数据字典迭代器
-
-**`get_sleep_time() -> float`**
-- 计算每根K线之间的延迟时间
-- 返回: 延迟时间（秒）
+try:
+    for chunk in feed:
+        if chunk.empty:
+            print("Warning: Empty chunk")
+            continue
+        
+        process_chunk(chunk)
+        
+except Exception as e:
+    print(f"Error processing feed: {e}")
+    
+    # 获取当前状态
+    stats = feed.get_stats()
+    print(f"Progress: {stats['total_rows_loaded']} rows loaded")
+```
 
 ## 性能优化建议
 
-### 1. 选择合适的块大小
+### 1. 合理设置块大小
 
 ```python
-# 小数据集（< 10万条）
-chunk_size = 5000
+# 小数据集（几个月）
+feed = client.create_data_feed(..., chunk_size=1000)
 
-# 中等数据集（10万 - 100万条）
-chunk_size = 10000
+# 中等数据集（1-2年）
+feed = client.create_data_feed(..., chunk_size=10000)
 
-# 大数据集（> 100万条）
-chunk_size = 50000
+# 大数据集（3年以上）
+feed = client.create_data_feed(..., chunk_size=50000)
 ```
 
-### 2. 使用缓存
-
-确保配置中启用了缓存：
-
-```yaml
-# config.yaml
-memory:
-  cache:
-    enabled: true
-    max_size_mb: 512
-    ttl_seconds: 3600
-```
-
-### 3. 预加载优化
-
-对于频繁访问的数据，可以预加载：
+### 2. 使用预加载
 
 ```python
-feed = ChunkedDataFeed(
+# 启用预加载提高性能
+feed = client.create_data_feed(
     ...,
     preload_chunks=2  # 预加载2个块
 )
 ```
 
-### 4. 选择合适的迭代方式
+### 3. 选择合适的迭代方式
 
 ```python
-# 需要DataFrame操作 -> 使用 __iter__()
-for chunk_df in feed:
-    chunk_df['custom_indicator'] = ...
+# 需要DataFrame完整功能 -> 块迭代
+for chunk in feed:
+    chunk['indicator'] = chunk['close'].rolling(20).mean()
 
-# 逐笔处理 -> 使用 iter_rows()（更快）
+# 只需要OHLCV数据 -> 行迭代（更快）
 for timestamp, o, h, l, c, v in feed.iter_rows():
-    process_bar(o, h, l, c, v)
+    simple_strategy(o, h, l, c, v)
 
-# 需要字段名 -> 使用 iter_dicts()
+# 需要字典格式 -> 字典迭代
 for bar in feed.iter_dicts():
-    if bar['close'] > bar['open']:
-        ...
+    process_dict(bar)
+```
+
+## 与直接查询的对比
+
+### 数据流 vs 直接查询
+
+| 特性 | 数据流 | 直接查询 |
+|------|--------|----------|
+| 内存占用 | 低（分块加载） | 高（一次性加载） |
+| 适用场景 | 大数据集、回测 | 小数据集、分析 |
+| 性能 | 首次较慢，整体快 | 一次性较快 |
+| 灵活性 | 流式处理 | 随机访问 |
+
+**何时使用数据流**：
+- ✅ 处理超过1年的1分钟数据
+- ✅ 回测系统集成
+- ✅ 实时策略模拟
+- ✅ 内存受限环境
+
+**何时使用直接查询**：
+- ✅ 数据量小（<100MB）
+- ✅ 需要随机访问数据
+- ✅ 一次性数据分析
+- ✅ 交互式探索
+
+## 故障排除
+
+### 问题1: 数据流返回空数据
+
+**原因**: 时间范围内没有数据
+
+**解决**:
+```python
+feed = client.create_data_feed(...)
+
+# 检查是否有数据
+first_chunk = next(iter(feed), None)
+if first_chunk is None or first_chunk.empty:
+    print("No data in this time range")
+else:
+    print(f"Found {len(first_chunk)} bars")
+```
+
+### 问题2: 内存仍然不足
+
+**解决**: 减小块大小
+```python
+# 从
+feed = client.create_data_feed(..., chunk_size=10000)
+
+# 改为
+feed = client.create_data_feed(..., chunk_size=1000)
+```
+
+### 问题3: 数据流太慢
+
+**解决**: 增加预加载
+```python
+feed = client.create_data_feed(
+    ...,
+    chunk_size=10000,
+    preload_chunks=3  # 增加预加载
+)
 ```
 
 ## 常见问题
 
-### Q1: 如何处理跨块的指标计算？
+**Q: 数据流会自动下载数据吗？**  
+A: 是的！新版数据流使用QueryClient，会自动下载缺失数据。
 
-A: 需要手动维护状态：
-
+**Q: 如何禁用自动下载？**  
+A: 直接实例化数据流类，不通过client：
 ```python
-# 错误示例：每个块独立计算
-for chunk in feed:
-    chunk['MA'] = chunk['close'].rolling(20).mean()  # 第一个块的前20行会是NaN
-
-# 正确示例：维护跨块状态
-all_closes = []
-for chunk in feed:
-    all_closes.extend(chunk['close'].tolist())
-    if len(all_closes) >= 20:
-        ma = sum(all_closes[-20:]) / 20
-        # 使用MA值
+from sdk.query import ChunkedDataFeed
+feed = ChunkedDataFeed(..., config=config)
+# 然后设置auto_strategy=False
 ```
 
-### Q2: 数据流能否重复使用？
+**Q: 数据流可以重复使用吗？**  
+A: 可以，使用`feed.reset()`重置到起始位置。
 
-A: 可以，使用 `reset()` 方法：
+**Q: 如何获取数据流的进度？**  
+A: 使用`feed.get_stats()`查看已加载行数和块数。
 
-```python
-feed = ChunkedDataFeed(...)
-
-# 第一次迭代
-for chunk in feed:
-    process(chunk)
-
-# 重置并再次迭代
-feed.reset()
-for chunk in feed:
-    process(chunk)
-```
-
-### Q3: 如何与其他回测框架集成？
-
-A: 大多数框架支持 pandas DataFrame：
-
-```python
-# Vectorbt
-import vectorbt as vbt
-feed = ChunkedDataFeed(...)
-df = feed.to_dataframe()
-vbt.Portfolio.from_signals(df['close'], entries, exits)
-
-# Zipline
-from zipline.data import bundles
-# 将数据写入zipline bundle
-
-# 自定义框架
-for timestamp, o, h, l, c, v in feed.iter_rows():
-    your_framework.feed_data(timestamp, o, h, l, c, v)
-```
-
-### Q4: 内存占用如何？
-
-A: 取决于 `chunk_size`：
-
-```python
-# 估算公式
-memory_mb = chunk_size * columns * 8 / (1024 * 1024)
-
-# 示例
-chunk_size = 10000
-columns = 6  # timestamp, open, high, low, close, volume
-memory_mb = 10000 * 6 * 8 / (1024 * 1024) ≈ 0.46 MB
-
-# 一个块通常只占用 < 1MB 内存
-```
-
-## 完整示例
-
-查看 `examples/data_feed_example.py` 获取更多示例：
-
-```bash
-python examples/data_feed_example.py
-```
+**Q: Backtrader数据流支持实时数据吗？**  
+A: 当前版本仅支持历史数据回测。实时数据正在开发中。
 
 ## 相关文档
 
-- [SDK客户端使用指南](./sdk_guide.md)
-- [配置文件说明](./configuration.md)
-- [Backtrader官方文档](https://www.backtrader.com/)
+- [SDK使用文档](../sdk/README.md) - SDK完整文档
+- [快速参考](SDK_QUICK_REFERENCE.md) - API快速参考
+- [迁移指南](SDK_REFACTORING_GUIDE.md) - 从旧版迁移
+
+## 下一步
+
+- 尝试不同的数据流类型
+- 集成到你的回测系统
+- 根据数据量调整块大小
+- 探索实时模拟功能
