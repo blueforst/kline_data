@@ -42,27 +42,49 @@ pip install -e .
 
 ## 🚀 快速开始
 
-### 1. 配置
+### 方式1：直接使用（推荐）
 
-复制并编辑配置文件：
+外部项目可以直接导入使用，自动使用项目配置，无需额外配置：
 
-```bash
-cp config/config.yaml config/config.local.yaml
+```python
+from kline_data.sdk import KlineClient
+from datetime import datetime
+
+# 直接创建客户端，自动使用项目配置
+client = KlineClient()
+
+# 查询数据
+df = client.get_kline(
+    exchange='binance',
+    symbol='BTC/USDT',
+    start_time=datetime(2024, 1, 1),
+    end_time=datetime(2024, 1, 2),
+    interval='1h'
+)
 ```
 
-编辑 `config.local.yaml` 设置你的参数：
+### 方式2：自定义配置
 
-```yaml
-storage:
-  root_path: "./data"  # 数据存储路径
-  
-ccxt:
-  proxy:
-    http: "http://127.0.0.1:7890"  # 如需代理
-    https: "http://127.0.0.1:7890"
+如需自定义配置，可以修改部分配置项：
+
+```python
+from kline_data.config import load_config
+from kline_data.sdk import KlineClient
+
+# 加载默认配置
+config = load_config()
+
+# 修改需要的配置
+config.storage.root_path = '/your/data/path'  # 修改存储路径
+config.ccxt.proxy.http = 'http://127.0.0.1:7890'  # 设置代理
+
+# 使用自定义配置创建客户端
+client = KlineClient(config=config)
 ```
 
-### 2. 使用Python SDK
+详细的外部使用说明请参考：[外部项目使用指南](docs/external_usage.md)
+
+### Python SDK 完整示例
 
 ```python
 from sdk import KlineClient

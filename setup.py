@@ -29,6 +29,9 @@ setup(
     url="https://github.com/yourusername/kline-data",
     packages=find_packages(exclude=["tests", "docs"]),
     include_package_data=True,
+    package_data={
+        'config': ['*.yaml', '*.yml'],
+    },
     install_requires=requirements,
     python_requires=">=3.10",
     entry_points={

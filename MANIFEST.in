@@ -1,0 +1,15 @@
+# 包含配置文件
+include config/config.yaml
+include config/*.yaml
+
+# 包含文档
+include README.md
+include CHANGELOG.md
+include QUICKSTART.md
+include CONTRIBUTING.md
+
+# 包含requirements
+include requirements.txt
+
+# 包含测试配置
+include pytest.ini

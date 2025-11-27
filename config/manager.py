@@ -281,18 +281,55 @@ class ConfigManager:
 
 
 # 便捷函数
-def load_config(config_path: Union[str, Path] = "config/config.yaml") -> Config:
+def load_config(config_path: Optional[Union[str, Path]] = None) -> Config:
     """
     加载配置的便捷函数
     
+    智能查找配置文件：
+    1. 如果提供了config_path，直接使用
+    2. 否则按以下顺序查找：
+       - 当前工作目录的 config/config.yaml
+       - 项目安装目录的 config/config.yaml（支持外部导入）
+       - 用户主目录的 .kline_data/config.yaml
+    
     Args:
-        config_path: 配置文件路径
+        config_path: 配置文件路径（可选）
         
     Returns:
         Config: 配置对象
+        
+    Raises:
+        FileNotFoundError: 找不到配置文件
     """
     manager = ConfigManager()
-    return manager.load(config_path)
+    
+    # 如果提供了路径，直接使用
+    if config_path is not None:
+        return manager.load(config_path)
+    
+    # 智能查找配置文件
+    search_paths = [
+        # 1. 当前工作目录
+        Path.cwd() / "config" / "config.yaml",
+        # 2. 项目安装目录（支持外部导入使用项目配置）
+        Path(__file__).parent / "config.yaml",
+        # 3. 用户主目录
+        Path.home() / ".kline_data" / "config.yaml",
+    ]
+    
+    for path in search_paths:
+        if path.exists():
+            return manager.load(path)
+    
+    # 如果都找不到，抛出详细的错误信息
+    searched = "\n  - ".join(str(p) for p in search_paths)
+    raise FileNotFoundError(
+        f"Configuration file not found. Searched locations:\n  - {searched}\n\n"
+        f"You can:\n"
+        f"1. Create a config file in one of the above locations\n"
+        f"2. Pass config_path explicitly to load_config()\n"
+        f"3. Pass a Config object directly when creating clients"
+    )
 
 
 def get_config() -> Config:
