@@ -7,7 +7,7 @@ from datetime import datetime
 from ..config import Config
 
 # 导入各个子客户端
-from .query import QueryClient, ChunkedDataFeed, BacktraderDataFeed, StreamingDataFeed
+from .query import QueryClient, ChunkedDataFeed
 from .download import DownloadClient
 from .resample import ResampleClient
 from .indicator import IndicatorClient
@@ -255,77 +255,7 @@ class KlineClient:
             end_time=end_time,
             interval=interval,
             chunk_size=chunk_size,
-            config=self.config,
-            preload_chunks=preload_chunks
-        )
-    
-    def create_backtrader_feed(
-        self,
-        exchange: str,
-        symbol: str,
-        start_time: datetime,
-        end_time: datetime,
-        interval: str = DEFAULT_QUERY_INTERVAL,
-        chunk_size: int = 10000
-    ) -> BacktraderDataFeed:
-        """
-        创建Backtrader兼容的数据流
-        
-        Args:
-            exchange: 交易所
-            symbol: 交易对
-            start_time: 开始时间
-            end_time: 结束时间
-            interval: 时间周期
-            chunk_size: 块大小
-            
-        Returns:
-            BacktraderDataFeed: Backtrader数据流对象
-        """
-        return BacktraderDataFeed(
-            exchange=exchange,
-            symbol=symbol,
-            start_time=start_time,
-            end_time=end_time,
-            interval=interval,
-            chunk_size=chunk_size,
             config=self.config
-        )
-    
-    def create_streaming_feed(
-        self,
-        exchange: str,
-        symbol: str,
-        start_time: datetime,
-        end_time: datetime,
-        interval: str = DEFAULT_QUERY_INTERVAL,
-        playback_speed: float = 1.0,
-        chunk_size: int = 1000
-    ) -> StreamingDataFeed:
-        """
-        创建流式数据源（实时模拟）
-        
-        Args:
-            exchange: 交易所
-            symbol: 交易对
-            start_time: 开始时间
-            end_time: 结束时间
-            interval: 时间周期
-            playback_speed: 播放速度
-            chunk_size: 块大小
-            
-        Returns:
-            StreamingDataFeed: 流式数据源对象
-        """
-        return StreamingDataFeed(
-            exchange=exchange,
-            symbol=symbol,
-            start_time=start_time,
-            end_time=end_time,
-            interval=interval,
-            chunk_size=chunk_size,
-            config=self.config,
-            playback_speed=playback_speed
         )
     
     # ==================== 下载接口 ====================

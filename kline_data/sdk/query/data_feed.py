@@ -2,39 +2,38 @@
 
 这个模块提供了高效的分块数据读取功能，特别适合大规模回测场景。
 主要特性：
-1. 内存高效的分块迭代
+1. 内存高效的分块迭代（直接读取Parquet文件）
 2. 支持多种时间周期
 3. 兼容backtrader数据格式
 4. 可配置的块大小
-5. 自动处理数据边界
 """
 
 import pandas as pd
-from typing import Optional, Iterator, Tuple
+from typing import Optional, Iterator, Tuple, List
 from datetime import datetime, timedelta
 import logging
+import pyarrow.parquet as pq
+import gc
 
 from ...config import Config
 from ...utils.constants import (
-    Timeframe,
     DEFAULT_QUERY_INTERVAL,
-    OHLCV_COLUMNS,
     validate_timeframe,
     validate_exchange,
     validate_symbol,
 )
 from ...utils.timezone import to_utc
-from .query_client import QueryClient
+from ...reader import ParquetReader
 
 logger = logging.getLogger(__name__)
 
 
 class ChunkedDataFeed:
     """
-    分块数据流
+    分块数据流 (内存优化版)
     
-    提供内存高效的K线数据迭代器，适合回测和实时数据处理。
-    数据按时间顺序分块加载，避免一次性加载大量数据到内存。
+    直接从Parquet文件读取数据，避免一次性加载所有数据到内存。
+    按文件（通常是按月）迭代读取，并支持流式输出。
     
     Example:
         >>> from datetime import datetime
@@ -47,19 +46,13 @@ class ChunkedDataFeed:
         ...     start_time=datetime(2020, 1, 1),
         ...     end_time=datetime(2024, 1, 1),
         ...     interval='1h',
-        ...     chunk_size=10000  # 每次加载10000条数据
+        ...     chunk_size=50000
         ... )
         >>> 
         >>> # 迭代数据块
         >>> for chunk_df in feed:
         ...     # 处理数据块
         ...     print(f"Loaded {len(chunk_df)} bars")
-        ...     # 进行回测逻辑
-        >>> 
-        >>> # 或使用行级迭代（更适合backtrader）
-        >>> for row in feed.iter_rows():
-        ...     timestamp, open_price, high, low, close, volume = row
-        ...     # 处理单根K线
     """
     
     def __init__(
@@ -71,20 +64,19 @@ class ChunkedDataFeed:
         interval: str = DEFAULT_QUERY_INTERVAL,
         chunk_size: int = 10000,
         config: Optional[Config] = None,
-        preload_chunks: int = 1,
+        columns: Optional[List[str]] = None,
     ):
         """
         初始化分块数据流
         
         Args:
-            exchange: 交易所名称（如 'binance', 'okx'）
-            symbol: 交易对（如 'BTC/USDT'）
+            exchange: 交易所名称
+            symbol: 交易对
             start_time: 开始时间
             end_time: 结束时间
-            interval: 时间周期（'1m', '5m', '15m', '1h', '4h', '1d', '1w'）
+            interval: 时间周期
             chunk_size: 每个数据块的大小（行数）
-            config: 配置对象（None则使用默认配置）
-            preload_chunks: 预加载的块数（用于优化性能）
+            config: 配置对象
         """
         # 验证输入参数
         validate_timeframe(interval)
@@ -97,132 +89,170 @@ class ChunkedDataFeed:
         self.end_time = to_utc(end_time)
         self.interval = interval
         self.chunk_size = chunk_size
-        self.preload_chunks = preload_chunks
-        
-        # 初始化配置和读取器
+        # 限定列可以显著降低内存占用；None 时读取所有列（向后兼容）
+        self.columns = columns
+
         if config is None:
-            from config import load_config
+            from ...config import load_config
             config = load_config()
         
         self.config = config
-        self.query_client = QueryClient(config)
+        self.reader = ParquetReader(config)
+        
+        # 获取文件列表
+        # 使用ParquetReader的内部方法获取文件列表
+        self._files = self.reader._get_partition_files(
+            exchange, symbol, self.start_time, self.end_time, interval
+        )
+        
+        self._current_file_index = 0
+        self._current_parquet_file = None
+        self._current_batch_iter = None
+        self._current_batch_df = None
+        self._current_batch_row = 0
         
         # 状态管理
         self._current_chunk: Optional[pd.DataFrame] = None
         self._chunk_index = 0
-        self._row_index = 0
         self._total_rows_loaded = 0
         self._is_exhausted = False
         
-        # 预加载第一块数据
+        logger.info(f"Found {len(self._files)} partition files for {exchange}/{symbol}")
+        
+        # 预加载第一块
         self._preload_initial_data()
-    
+
     def _preload_initial_data(self) -> None:
         """预加载初始数据"""
         try:
-            # 读取第一批数据
             self._current_chunk = self._load_next_chunk()
-            if self._current_chunk is not None and not self._current_chunk.empty:
-                logger.info(
-                    f"Preloaded {len(self._current_chunk)} rows for "
-                    f"{self.exchange}/{self.symbol} {self.interval}"
-                )
-            else:
-                logger.warning(
-                    f"No data available for {self.exchange}/{self.symbol} "
-                    f"{self.interval} from {self.start_time} to {self.end_time}"
-                )
+            if self._current_chunk is None or self._current_chunk.empty:
+                if not self._files:
+                    logger.warning(
+                        f"No data files found for {self.exchange}/{self.symbol} "
+                        f"{self.interval} from {self.start_time} to {self.end_time}"
+                    )
                 self._is_exhausted = True
         except Exception as e:
             logger.error(f"Failed to preload initial data: {e}")
             self._is_exhausted = True
-    
+
     def _load_next_chunk(self) -> Optional[pd.DataFrame]:
-        """
-        加载下一个数据块
-        
-        Returns:
-            Optional[pd.DataFrame]: 数据块，如果没有更多数据则返回None
-        """
+        """加载下一个数据块"""
         if self._is_exhausted:
             return None
-        
-        try:
-            # 计算当前块的时间范围
-            # 使用已加载的行数来估算下一个时间点
-            if self._total_rows_loaded == 0:
-                chunk_start = self.start_time
-            else:
-                # 基于已加载的数据，计算下一个起始时间
-                # 这里使用简单的时间推进，实际可能需要更精确的方法
-                from utils.constants import get_timeframe_seconds
-                interval_seconds = get_timeframe_seconds(self.interval)
-                offset_seconds = self._total_rows_loaded * interval_seconds
-                chunk_start = self.start_time + timedelta(seconds=offset_seconds)
-            
-            # 如果已经超过结束时间，返回None
-            if chunk_start >= self.end_time:
-                self._is_exhausted = True
-                return None
-            
-            # 计算块的结束时间（估算）
-            from utils.constants import get_timeframe_seconds
-            interval_seconds = get_timeframe_seconds(self.interval)
-            chunk_duration = self.chunk_size * interval_seconds
-            chunk_end = min(
-                chunk_start + timedelta(seconds=chunk_duration),
-                self.end_time
-            )
-            
-            # 使用QueryClient获取数据（支持自动下载）
-            df = self.query_client.get_kline(
-                exchange=self.exchange,
-                symbol=self.symbol,
-                start_time=chunk_start,
-                end_time=chunk_end,
-                interval=self.interval,
-                auto_strategy=True  # 自动下载缺失数据
-            )
-            
-            if df.empty:
-                # 尝试读取更大的时间范围
-                # 可能数据稀疏或有间隙
-                chunk_end = min(
-                    chunk_start + timedelta(days=30),  # 扩展到30天
-                    self.end_time
-                )
-                df = self.query_client.get_kline(
-                    exchange=self.exchange,
-                    symbol=self.symbol,
-                    start_time=chunk_start,
-                    end_time=chunk_end,
-                    interval=self.interval,
-                    auto_strategy=True
-                )
+
+        chunk_rows = []
+        rows_needed = self.chunk_size
+
+        while rows_needed > 0:
+            # 如果当前batch未加载或已读完，加载下一个batch
+            if self._current_batch_df is None or self._current_batch_row >= len(self._current_batch_df):
                 
-                if df.empty:
-                    self._is_exhausted = True
-                    return None
+                # 如果当前文件未打开或batch迭代器已耗尽，打开下一个文件或获取下一个batch
+                if self._current_batch_iter is None:
+                    # 需要打开新文件
+                    if self._current_file_index >= len(self._files):
+                        # 没有更多文件了
+                        if not chunk_rows:
+                            self._is_exhausted = True
+                            return None
+                        break # 返回已有的数据
+                    
+                    file_path = self._files[self._current_file_index]
+                    self._current_file_index += 1
+                    
+                    try:
+                        logger.debug(f"Opening parquet file: {file_path}")
+                        self._current_parquet_file = pq.ParquetFile(file_path)
+                        # 使用iter_batches分批读取，batch_size设为chunk_size以优化内存
+                        self._current_batch_iter = self._current_parquet_file.iter_batches(
+                            batch_size=self.chunk_size,
+                            columns=self.columns
+                        )
+                    except Exception as e:
+                        logger.error(f"Error opening file {file_path}: {e}")
+                        continue
+                
+                # 获取下一个batch
+                try:
+                    batch = next(self._current_batch_iter)
+                    df = batch.to_pandas()
+                    
+                    # 过滤时间范围
+                    if 'timestamp' in df.columns:
+                        # 确保timestamp是datetime类型且为UTC
+                        if not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
+                            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
+                        elif df['timestamp'].dt.tz is None:
+                            df['timestamp'] = df['timestamp'].dt.tz_localize('UTC')
+                        
+                        # 过滤
+                        df = df[
+                            (df['timestamp'] >= self.start_time) &
+                            (df['timestamp'] <= self.end_time)
+                        ]
+                    
+                    if df.empty:
+                        continue
+                        
+                    self._current_batch_df = df
+                    self._current_batch_row = 0
+                    
+                except StopIteration:
+                    # 当前文件读完
+                    self._current_parquet_file = None
+                    self._current_batch_iter = None
+                    self._current_batch_df = None
+                    gc.collect()
+                    continue
+                except Exception as e:
+                    logger.error(f"Error reading batch: {e}")
+                    self._current_parquet_file = None
+                    self._current_batch_iter = None
+                    self._current_batch_df = None
+                    gc.collect()
+                    continue
+
+            # 从当前batch获取数据
+            remaining_in_batch = len(self._current_batch_df) - self._current_batch_row
+            take_rows = min(rows_needed, remaining_in_batch)
             
-            # 限制块大小
-            if len(df) > self.chunk_size:
-                df = df.head(self.chunk_size)
+            chunk = self._current_batch_df.iloc[self._current_batch_row : self._current_batch_row + take_rows]
+            chunk_rows.append(chunk)
             
-            # 更新统计
-            self._total_rows_loaded += len(df)
-            self._chunk_index += 1
-            
-            logger.debug(
-                f"Loaded chunk {self._chunk_index}: {len(df)} rows "
-                f"(total: {self._total_rows_loaded})"
-            )
-            
-            return df
-            
-        except Exception as e:
-            logger.error(f"Error loading chunk: {e}")
+            self._current_batch_row += take_rows
+            rows_needed -= take_rows
+
+        if not chunk_rows:
             self._is_exhausted = True
             return None
+
+        # 合并块
+        if len(chunk_rows) == 1:
+            result_df = chunk_rows[0]
+        else:
+            result_df = pd.concat(chunk_rows, ignore_index=True)
+
+        # 当前batch数据已耗尽，释放引用以便GC及时回收
+        if self._current_batch_df is not None and self._current_batch_row >= len(self._current_batch_df):
+            self._current_batch_df = None
+            self._current_batch_row = 0
+            gc.collect()
+
+        # 清理临时列表
+        chunk_rows.clear()
+        del chunk_rows
+
+        self._total_rows_loaded += len(result_df)
+        self._chunk_index += 1
+        
+        logger.debug(
+            f"Loaded chunk {self._chunk_index}: {len(result_df)} rows "
+            f"(total: {self._total_rows_loaded})"
+        )
+        
+        return result_df
     
     def __iter__(self) -> Iterator[pd.DataFrame]:
         """
@@ -240,15 +270,10 @@ class ChunkedDataFeed:
     
     def iter_rows(self) -> Iterator[Tuple]:
         """
-        逐行迭代数据（适合backtrader等逐笔处理）
+        逐行迭代数据
         
         Yields:
             Tuple: (timestamp, open, high, low, close, volume)
-        
-        Example:
-            >>> for timestamp, o, h, l, c, v in feed.iter_rows():
-            ...     # 处理每一根K线
-            ...     strategy.next(o, h, l, c, v)
         """
         for chunk in self:
             for _, row in chunk.iterrows():
@@ -267,10 +292,6 @@ class ChunkedDataFeed:
         
         Yields:
             dict: K线数据字典
-        
-        Example:
-            >>> for bar in feed.iter_dicts():
-            ...     print(f"Time: {bar['timestamp']}, Close: {bar['close']}")
         """
         for chunk in self:
             for record in chunk.to_dict('records'):
@@ -308,22 +329,13 @@ class ChunkedDataFeed:
         
         return df
     
-    def reset(self) -> None:
-        """重置迭代器到起始位置"""
-        self._current_chunk = None
-        self._chunk_index = 0
-        self._row_index = 0
-        self._total_rows_loaded = 0
-        self._is_exhausted = False
-        self._preload_initial_data()
-    
     def get_stats(self) -> dict:
         """
         获取数据流统计信息
         
         Returns:
             dict: 统计信息
-        """
+         """
         return {
             'exchange': self.exchange,
             'symbol': self.symbol,
@@ -345,182 +357,3 @@ class ChunkedDataFeed:
             f"chunk_size={self.chunk_size}, "
             f"loaded={self._total_rows_loaded})"
         )
-
-
-class BacktraderDataFeed(ChunkedDataFeed):
-    """
-    Backtrader兼容的数据流
-    
-    提供与backtrader.feeds.PandasData兼容的接口
-    可以直接用于backtrader策略回测
-    
-    Example:
-        >>> import backtrader as bt
-        >>> from sdk import BacktraderDataFeed
-        >>> 
-        >>> # 创建Cerebro实例
-        >>> cerebro = bt.Cerebro()
-        >>> 
-        >>> # 添加数据流
-        >>> data_feed = BacktraderDataFeed(
-        ...     exchange='binance',
-        ...     symbol='BTC/USDT',
-        ...     start_time=datetime(2023, 1, 1),
-        ...     end_time=datetime(2024, 1, 1),
-        ...     interval='1h'
-        ... )
-        >>> 
-        >>> # 转换为backtrader可用的格式
-        >>> bt_data = bt.feeds.PandasData(
-        ...     dataname=data_feed.to_dataframe(),
-        ...     datetime='timestamp',
-        ...     open='open',
-        ...     high='high',
-        ...     low='low',
-        ...     close='close',
-        ...     volume='volume',
-        ...     openinterest=-1
-        ... )
-        >>> 
-        >>> cerebro.adddata(bt_data)
-        >>> # 添加策略并运行
-        >>> # cerebro.addstrategy(MyStrategy)
-        >>> # cerebro.run()
-    """
-    
-    def to_backtrader_format(self, max_rows: Optional[int] = None) -> pd.DataFrame:
-        """
-        转换为backtrader标准格式
-        
-        Args:
-            max_rows: 最大行数
-        
-        Returns:
-            pd.DataFrame: backtrader格式的数据
-        """
-        df = self.to_dataframe(max_rows=max_rows)
-        
-        if df.empty:
-            return df
-        
-        # 确保timestamp是datetime索引
-        if 'timestamp' in df.columns:
-            df = df.set_index('timestamp')
-        
-        # 确保列名符合backtrader标准
-        # backtrader需要: open, high, low, close, volume, openinterest
-        if 'openinterest' not in df.columns:
-            df['openinterest'] = 0
-        
-        # 确保列顺序
-        columns = ['open', 'high', 'low', 'close', 'volume', 'openinterest']
-        df = df[[col for col in columns if col in df.columns]]
-        
-        return df
-    
-    def get_backtrader_params(self) -> dict:
-        """
-        获取backtrader PandasData的参数配置
-        
-        Returns:
-            dict: 参数字典
-        """
-        return {
-            'datetime': None,  # 使用索引作为datetime
-            'open': 'open',
-            'high': 'high',
-            'low': 'low',
-            'close': 'close',
-            'volume': 'volume',
-            'openinterest': 'openinterest',
-        }
-
-
-class StreamingDataFeed(ChunkedDataFeed):
-    """
-    流式数据源（实时模拟）
-    
-    模拟实时数据流，适合进行实时策略测试
-    可以控制数据推送速度，模拟真实交易环境
-    
-    Example:
-        >>> from sdk import StreamingDataFeed
-        >>> import time
-        >>> 
-        >>> feed = StreamingDataFeed(
-        ...     exchange='binance',
-        ...     symbol='BTC/USDT',
-        ...     start_time=datetime(2024, 1, 1),
-        ...     end_time=datetime(2024, 1, 2),
-        ...     interval='1m',
-        ...     playback_speed=100  # 100倍速播放
-        ... )
-        >>> 
-        >>> # 实时处理数据
-        >>> for bar in feed.stream():
-        ...     print(f"New bar: {bar['close']}")
-        ...     # 执行交易逻辑
-        ...     time.sleep(feed.get_sleep_time())  # 模拟实时延迟
-    """
-    
-    def __init__(
-        self,
-        exchange: str,
-        symbol: str,
-        start_time: datetime,
-        end_time: datetime,
-        interval: str = DEFAULT_QUERY_INTERVAL,
-        chunk_size: int = 1000,
-        config: Optional[Config] = None,
-        playback_speed: float = 1.0,
-    ):
-        """
-        初始化流式数据源
-        
-        Args:
-            exchange: 交易所
-            symbol: 交易对
-            start_time: 开始时间
-            end_time: 结束时间
-            interval: 时间周期
-            chunk_size: 块大小
-            config: 配置
-            playback_speed: 播放速度（1.0=实时，10.0=10倍速）
-        """
-        super().__init__(
-            exchange=exchange,
-            symbol=symbol,
-            start_time=start_time,
-            end_time=end_time,
-            interval=interval,
-            chunk_size=chunk_size,
-            config=config,
-        )
-        self.playback_speed = playback_speed
-    
-    def stream(self) -> Iterator[dict]:
-        """
-        流式推送数据
-        
-        Yields:
-            dict: K线数据
-        """
-        import time
-        
-        for bar in self.iter_dicts():
-            yield bar
-            # 计算延迟时间
-            sleep_time = self.get_sleep_time()
-            if sleep_time > 0:
-                time.sleep(sleep_time)
-    
-    def get_sleep_time(self) -> float:
-        """
-        计算每根K线之间的延迟时间
-        
-        Returns:
-            float: 延迟时间（秒）
-        """
-        from utils.constants import get_timeframe_seconds
-        interval_seconds = get_timeframe_seconds(self.interval)
-        return interval_seconds / self.playback_speed if self.playback_speed > 0 else 0

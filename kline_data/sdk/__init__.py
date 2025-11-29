@@ -16,7 +16,7 @@ SDK层 - 提供统一的Python SDK接口
 from .sdk_client import KlineClient
 
 # 子客户端（可直接使用）
-from .query import QueryClient, ChunkedDataFeed, BacktraderDataFeed, StreamingDataFeed
+from .query import QueryClient, ChunkedDataFeed
 from .download import DownloadClient
 from .resample import ResampleClient
 from .indicator import IndicatorClient
@@ -35,6 +35,4 @@ __all__ = [
     
     # 数据流
     'ChunkedDataFeed',
-    'BacktraderDataFeed',
-    'StreamingDataFeed',
 ]
