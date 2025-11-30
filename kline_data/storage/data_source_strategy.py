@@ -57,7 +57,9 @@ class DataSourceStrategy:
         target_interval: str
     ) -> DataSourceDecision:
         """
-        决定数据源（优先级：本地完整数据 > 交易所下载 > 本地重采样）
+        决定数据源（优先级：本地完整数据 > 交易所下载）
+        
+        所有周期的数据直接从CCXT下载，不再使用重采样。
         
         Args:
             exchange: 交易所
@@ -69,7 +71,7 @@ class DataSourceStrategy:
         Returns:
             DataSourceDecision: 数据源决策
         """
-        # 1. 检查本地是否有目标周期的完整数据（最高优先级）
+        # 1. 检查本地是否有目标周期的完整数据
         local_complete = self._check_local_data(
             exchange, symbol, start_time, end_time, target_interval
         )
@@ -83,61 +85,13 @@ class DataSourceStrategy:
                 reason=f'Local has complete {target_interval} data'
             )
         
-        # 2. 优先从交易所获取（比本地重采样更高效）
-        # 2.1 检查交易所是否原生支持目标周期
-        if self._is_native_timeframe(target_interval):
-            return DataSourceDecision(
-                source='ccxt',
-                source_interval=None,
-                need_download=True,
-                download_interval=target_interval,
-                reason=f'Download {target_interval} directly from exchange '
-                       f'(native support, more efficient than resampling)'
-            )
-        
-        # 2.2 找到交易所支持的、可以重采样的最大周期
-        best_source = self._find_best_download_interval(target_interval)
-        
-        if best_source:
-            return DataSourceDecision(
-                source='hybrid',
-                source_interval=best_source,
-                need_download=True,
-                download_interval=best_source,
-                reason=f'Download {best_source} from exchange and resample to {target_interval} '
-                       f'(more efficient than local resample)'
-            )
-        
-        # 3. 回退：检查本地是否可以重采样（仅当交易所无法获取时）
-        can_resample, source_interval = self._check_resample_possibility(
-            exchange, symbol, start_time, end_time, target_interval
-        )
-        
-        if can_resample:
-            # 计算重采样的数据量和效率
-            estimated_records = self._estimate_records(
-                start_time, end_time, source_interval
-            )
-            
-            # 只有在数据量适中时才使用本地重采样
-            if estimated_records < self.RESAMPLE_THRESHOLD_RECORDS:
-                return DataSourceDecision(
-                    source='resample',
-                    source_interval=source_interval,
-                    need_download=False,
-                    download_interval=None,
-                    reason=f'Fallback: Resample from local {source_interval} data '
-                           f'({estimated_records} records, exchange unavailable)'
-                )
-        
-        # 4. 最后的选择：下载1s数据后重采样（通常不会到这一步）
+        # 2. 直接从交易所下载目标周期数据
         return DataSourceDecision(
-            source='hybrid',
-            source_interval='1s',
+            source='ccxt',
+            source_interval=None,
             need_download=True,
-            download_interval='1s',
-            reason=f'Last resort: Download 1s data and resample to {target_interval} '
-                   f'(no better option available)'
+            download_interval=target_interval,
+            reason=f'Download {target_interval} directly from exchange'
         )
     
     def _check_local_data(
@@ -212,7 +166,7 @@ class DataSourceStrategy:
         Returns:
             Tuple[bool, Optional[str]]: (是否可以, 源周期)
         """
-        from resampler.timeframe import (
+        from kline_data.resampler.timeframe import (
             can_resample,
             get_timeframe_seconds,
             TIMEFRAME_SECONDS
@@ -291,7 +245,7 @@ class DataSourceStrategy:
         Returns:
             Optional[str]: 最佳下载周期
         """
-        from resampler.timeframe import (
+        from kline_data.resampler.timeframe import (
             can_resample,
             get_timeframe_seconds,
         )
@@ -334,7 +288,7 @@ class DataSourceStrategy:
         Returns:
             int: 估算的记录数
         """
-        from resampler.timeframe import get_timeframe_seconds
+        from kline_data.resampler.timeframe import get_timeframe_seconds
 
         
         duration_seconds = (end_time - start_time).total_seconds()

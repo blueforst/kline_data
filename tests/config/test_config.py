@@ -4,11 +4,11 @@ import pytest
 from pathlib import Path
 import tempfile
 import yaml
-from config import ConfigManager, load_config, get_config
-from config.schemas import Config
+from kline_data.config import ConfigManager, load_config, get_config
+from kline_data.config.schemas import Config
 
 # 导入全局常量
-from utils.constants import (
+from kline_data.utils.constants import (
     Timeframe,
     DEFAULT_EXCHANGE,
     DEFAULT_SYMBOL,
@@ -288,7 +288,7 @@ class TestConfigSchema:
     
     def test_storage_config_validation(self):
         """测试存储配置验证"""
-        from config.schemas import StorageConfig
+        from kline_data.config.schemas import StorageConfig
         
         # 有效配置
         config = StorageConfig(
@@ -306,7 +306,7 @@ class TestConfigSchema:
     
     def test_ccxt_config_validation(self):
         """测试CCXT配置验证"""
-        from config.schemas import CCXTConfig
+        from kline_data.config.schemas import CCXTConfig
         
         # 有效配置
         config = CCXTConfig(
@@ -320,7 +320,7 @@ class TestConfigSchema:
     
     def test_memory_config_validation(self):
         """测试内存配置验证"""
-        from config.schemas import MemoryConfig
+        from kline_data.config.schemas import MemoryConfig
         
         # 有效配置
         config = MemoryConfig(
@@ -338,7 +338,7 @@ class TestConfigSchema:
     
     def test_api_config_validation(self):
         """测试API配置验证"""
-        from config.schemas import APIConfig
+        from kline_data.config.schemas import APIConfig
         
         # 有效配置
         config = APIConfig(

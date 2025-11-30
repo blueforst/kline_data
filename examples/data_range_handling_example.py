@@ -4,7 +4,7 @@
 """
 
 from datetime import datetime, timedelta
-from sdk import KlineClient
+from kline_data.sdk import KlineClient
 
 
 def example_default_mode():

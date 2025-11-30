@@ -217,7 +217,7 @@ def validate_data(
                         for idx, gap in enumerate(missing_ranges, 1):
                             try:
                                 # 解析缺失时间范围
-                                from utils.timezone import parse_datetime
+                                from ...utils.timezone import parse_datetime
                                 gap_start = parse_datetime(gap.start)
                                 gap_end = parse_datetime(gap.end)
                                 
@@ -272,7 +272,7 @@ def _perform_max_check(
         interval: 时间周期
     """
     from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
-    from storage.writer import ParquetWriter
+    from kline_data.storage.writer import ParquetWriter
     
     console.print("[bold cyan]===== 完整校验模式 (--max) =====[/bold cyan]\n")
     console.print("[yellow]说明: 此模式会完整扫描所有实际数据文件，对比元数据，并修复不一致问题[/yellow]\n")
@@ -355,7 +355,7 @@ def _perform_max_check(
                     meta_end = interval_data.end_timestamp
                     
                     # 允许一定的时间误差（1个周期的步长）
-                    from resampler.timeframe import get_timeframe_seconds
+                    from ...utils.constants import get_timeframe_seconds
                     tolerance_ms = get_timeframe_seconds(interval) * 1000
                     
                     if abs(actual_start_ts - meta_start) > tolerance_ms or abs(actual_end_ts - meta_end) > tolerance_ms:
@@ -643,7 +643,7 @@ def repair_data(
                     for idx, gap in enumerate(missing_ranges, 1):
                         try:
                             # 解析缺失时间范围
-                            from utils.timezone import parse_datetime
+                            from ...utils.timezone import parse_datetime
                             gap_start = parse_datetime(gap.start)
                             gap_end = parse_datetime(gap.end)
                             

@@ -7,7 +7,7 @@
 2. 使用 CLI 下载全部历史数据
 """
 
-from sdk import KlineClient
+from kline_data.sdk import KlineClient
 from datetime import datetime
 
 def main():

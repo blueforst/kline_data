@@ -5,7 +5,7 @@
 """
 
 from datetime import datetime, timedelta
-from utils.constants import (
+from kline_data.utils.constants import (
     Timeframe,
     TIMEFRAME_SECONDS,
     COMMON_INTERVALS,

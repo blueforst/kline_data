@@ -17,12 +17,12 @@ import numpy as np
 import tempfile
 from pathlib import Path
 
-from sdk.client import KlineClient
-from sdk.data_feed import ChunkedDataFeed
-from storage.data_source_strategy import DataSourceStrategy
-from storage.models import KlineData
-from config.manager import ConfigManager
-from indicators.manager import IndicatorManager
+from kline_data.sdk.client import KlineClient
+from kline_data.sdk.data_feed import ChunkedDataFeed
+from kline_data.storage.data_source_strategy import DataSourceStrategy
+from kline_data.storage.models import KlineData
+from kline_data.config.manager import ConfigManager
+from kline_data.indicators.manager import IndicatorManager
 
 
 class TestSystemWorkflowIntegration:

@@ -14,7 +14,7 @@ from unittest.mock import Mock, patch, call
 from datetime import datetime, timedelta
 import pandas as pd
 
-from storage.data_source_strategy import DataSourceStrategy, DataSourceDecision
+from kline_data.storage.data_source_strategy import DataSourceStrategy, DataSourceDecision
 
 
 class TestDataSourceStrategyContract:

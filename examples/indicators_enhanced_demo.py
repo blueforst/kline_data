@@ -10,7 +10,7 @@ from rich.table import Table
 from rich.panel import Panel
 
 # 导入指标模块
-from indicators import (
+from kline_data.indicators import (
     IndicatorManager,
     talib_adapter,
     TALIB_AVAILABLE,

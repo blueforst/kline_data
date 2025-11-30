@@ -3,9 +3,9 @@
 import pytest
 from datetime import datetime
 from unittest.mock import Mock, patch, MagicMock
-from storage.downloader import DataDownloader
-from sdk.client import KlineClient
-from config import Config
+from kline_data.storage.downloader import DataDownloader
+from kline_data.sdk.client import KlineClient
+from kline_data.config import Config
 
 
 class TestEarliestTimeDetection:

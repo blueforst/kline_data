@@ -15,8 +15,8 @@ from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 
-from sdk.data_feed import ChunkedDataFeed
-from utils.constants import Timeframe
+from kline_data.sdk.data_feed import ChunkedDataFeed
+from kline_data.utils.constants import Timeframe
 
 
 class TestChunkedDataFeedBehavior:

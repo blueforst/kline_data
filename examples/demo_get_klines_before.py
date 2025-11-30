@@ -4,11 +4,11 @@
 """
 
 from datetime import datetime
-from sdk import KlineClient
-from utils.timezone import to_utc, format_datetime, timestamp_to_datetime
+from kline_data.sdk import KlineClient
+from kline_data.utils.timezone import to_utc, format_datetime, timestamp_to_datetime
 
 # 导入全局常量
-from utils.constants import (
+from kline_data.utils.constants import (
     Timeframe,
     DEFAULT_EXCHANGE,
     DEFAULT_SYMBOL,

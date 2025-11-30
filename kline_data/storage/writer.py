@@ -201,6 +201,8 @@ class ParquetWriter:
         """
         获取分区文件路径
         
+        新的统一结构: raw/exchange/symbol/interval/year/month/data.parquet
+        
         Args:
             exchange: 交易所
             symbol: 交易对
@@ -213,10 +215,8 @@ class ParquetWriter:
         """
         symbol_id = symbol.replace('/', '')
         
-        if interval == '1s':
-            base_path = self.root_path / 'raw' / exchange / symbol_id
-        else:
-            base_path = self.root_path / 'resampled' / exchange / symbol_id / interval
+        # 统一路径结构：所有周期数据都在 raw 目录下，按周期分子目录
+        base_path = self.root_path / 'raw' / exchange / symbol_id / interval
         
         return base_path / str(year) / f"{month:02d}" / 'data.parquet'
     
@@ -315,8 +315,8 @@ class ParquetWriter:
         Returns:
             List[str]: 被删除/修改的文件路径列表
         """
-        from utils.timezone import to_utc, datetime_to_timestamp
-        from reader import ParquetReader
+        from kline_data.utils.timezone import to_utc, datetime_to_timestamp
+        from kline_data.reader import ParquetReader
         from rich.console import Console
         console = Console()
 

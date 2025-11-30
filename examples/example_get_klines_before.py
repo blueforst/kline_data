@@ -4,13 +4,13 @@
 """
 
 from datetime import datetime
-from sdk import KlineClient
-from utils.timezone import to_utc, format_datetime
+from kline_data.sdk import KlineClient
+from kline_data.utils.timezone import to_utc, format_datetime
 from rich.console import Console
 from rich.table import Table
 
 # 导入全局常量
-from utils.constants import (
+from kline_data.utils.constants import (
     Timeframe,
     DEFAULT_EXCHANGE,
     DEFAULT_SYMBOL,
@@ -82,7 +82,7 @@ def example_with_timezone():
             console.print(f"✅ 获取到 {len(df)} 条K线数据")
 
             # 显示时间范围
-            from utils.timezone import timestamp_to_datetime
+            from kline_data.utils.timezone import timestamp_to_datetime
             start_dt = timestamp_to_datetime(df[OHLCV_COLUMNS[0]].min())
             end_dt = timestamp_to_datetime(df[OHLCV_COLUMNS[0]].max())
 
@@ -176,7 +176,7 @@ def example_recent_data():
     """获取最近的数据（相对于当前时间，使用全局常量）"""
     console.print("\n[bold blue]示例5: 获取当前时间前的最近数据（使用常量）[/bold blue]")
 
-    from utils.timezone import now_utc
+    from kline_data.utils.timezone import now_utc
 
     with KlineClient() as client:
         # 获取当前时间前的100条分钟线
@@ -198,7 +198,7 @@ def example_recent_data():
         if not df.empty:
             console.print(f"✅ 获取到 {len(df)} 条K线数据")
 
-            from utils.timezone import timestamp_to_datetime
+            from kline_data.utils.timezone import timestamp_to_datetime
             latest_dt = timestamp_to_datetime(df[OHLCV_COLUMNS[0]].max())
             console.print(f"最新K线时间: {format_datetime(latest_dt, for_display=True)}")
 

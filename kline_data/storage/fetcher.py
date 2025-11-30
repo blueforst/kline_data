@@ -10,19 +10,13 @@ from .downloader import DownloadManager
 from ..reader import ParquetReader
 from rich.console import Console
 
-# 延迟导入以避免循环导入
-def get_resampler_class():
-    """延迟导入KlineResampler"""
-    from resampler import KlineResampler
-    return KlineResampler
-
 console = Console()
 
 
 class DataFetcher:
     """
     数据获取器
-    根据策略自动选择最优的数据获取方式
+    根据策略自动选择最优的数据获取方式（直接从交易所下载，不使用重采样）
     """
     
     def __init__(self, config: Config):
@@ -36,9 +30,6 @@ class DataFetcher:
         self.strategy = DataSourceStrategy(config)
         self.download_mgr = DownloadManager(config)
         self.reader = ParquetReader(config)
-        # 使用延迟导入获取KlineResampler类
-        KlineResampler = get_resampler_class()
-        self.resampler = KlineResampler(config)
     
     def fetch(
         self,
@@ -59,7 +50,7 @@ class DataFetcher:
             start_time: 开始时间
             end_time: 结束时间
             interval: 目标周期
-            force_strategy: 强制使用特定策略 ('local', 'ccxt', 'resample')
+            force_strategy: 强制使用特定策略 ('local', 'ccxt')
             verbose: 是否打印决策信息
             
         Returns:
@@ -128,22 +119,6 @@ class DataFetcher:
                 download_interval=interval,
                 reason='Forced to download from exchange'
             )
-        elif force_strategy == 'resample':
-            # 尝试找到可用的源数据
-            can_resample, source_interval = self.strategy._check_resample_possibility(
-                exchange, symbol, start_time, end_time, interval
-            )
-            if can_resample:
-                return DataSourceDecision(
-                    source='resample',
-                    source_interval=source_interval,
-                    need_download=False,
-                    download_interval=None,
-                    reason='Forced to resample from local data'
-                )
-            else:
-                console.print(f"Warning: Cannot resample, falling back to original strategy")
-                return decision
         else:
             return decision
     
@@ -177,7 +152,7 @@ class DataFetcher:
             )
         
         elif decision.source == 'ccxt':
-            # 从交易所下载（download方法是同步的，会阻塞直到完成）
+            # 从交易所下载目标周期数据（download方法是同步的，会阻塞直到完成）
             console.print(f"Downloading {interval} data from {exchange}...")
             task_id = self.download_mgr.download(
                 exchange, symbol, start_time, end_time, interval
@@ -186,38 +161,6 @@ class DataFetcher:
             # download方法已经同步完成，直接读取数据
             return self.reader.read_range(
                 exchange, symbol, start_time, end_time, interval
-            )
-        
-        elif decision.source == 'resample':
-            # 从本地源数据重采样
-            console.print(f"Resampling from {decision.source_interval} to {interval}...")
-            return self.resampler.resample_range(
-                exchange, symbol, start_time, end_time,
-                decision.source_interval, interval,
-                save=True
-            )
-        
-        elif decision.source == 'hybrid':
-            # 先下载，再重采样（download方法是同步的）
-            console.print(f"Downloading {decision.download_interval} data from {exchange}...")
-            task_id = self.download_mgr.download(
-                exchange, symbol, start_time, end_time,
-                decision.download_interval
-            )
-            
-            # download方法已经同步完成
-            # 如果下载的就是目标周期，直接返回
-            if decision.download_interval == interval:
-                return self.reader.read_range(
-                    exchange, symbol, start_time, end_time, interval
-                )
-            
-            # 否则进行重采样
-            console.print(f"Resampling from {decision.download_interval} to {interval}...")
-            return self.resampler.resample_range(
-                exchange, symbol, start_time, end_time,
-                decision.download_interval, interval,
-                save=True
             )
         
         else:
@@ -269,7 +212,7 @@ class DataFetcher:
                     )
                     if not df.empty:
                         # 如果降级周期更小，重采样到目标周期
-                        from resampler.timeframe import get_timeframe_seconds
+                        from kline_data.resampler.timeframe import get_timeframe_seconds
 
                         if (get_timeframe_seconds(fallback_interval) <
                             get_timeframe_seconds(interval)):

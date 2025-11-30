@@ -8,8 +8,8 @@ from datetime import datetime
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from sdk import KlineClient
-from utils.constants import DEFAULT_EXCHANGE, DEFAULT_SYMBOL
+from kline_data.sdk import KlineClient
+from kline_data.utils.constants import DEFAULT_EXCHANGE, DEFAULT_SYMBOL
 from rich.console import Console
 from rich.table import Table
 

@@ -3,11 +3,11 @@
 import pytest
 import pandas as pd
 from datetime import datetime, timedelta
-from sdk import KlineClient
-from utils.timezone import to_utc, datetime_to_timestamp, timestamp_to_datetime, now_utc
+from kline_data.sdk import KlineClient
+from kline_data.utils.timezone import to_utc, datetime_to_timestamp, timestamp_to_datetime, now_utc
 
 # 导入全局常量
-from utils.constants import (
+from kline_data.utils.constants import (
     Timeframe,
     DEFAULT_EXCHANGE,
     DEFAULT_SYMBOL,

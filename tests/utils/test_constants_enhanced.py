@@ -10,7 +10,7 @@
 """
 
 import pytest
-from utils.constants import (
+from kline_data.utils.constants import (
     Timeframe,
     DEFAULT_QUERY_INTERVAL,
     DEFAULT_DOWNLOAD_INTERVAL,

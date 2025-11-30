@@ -14,9 +14,9 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 from pathlib import Path
 
-from sdk.client import KlineClient
-from storage.data_source_strategy import DataSourceStrategy
-from storage.metadata_manager import MetadataManager
+from kline_data.sdk.client import KlineClient
+from kline_data.storage.data_source_strategy import DataSourceStrategy
+from kline_data.storage.metadata_manager import MetadataManager
 
 
 class TestKlineClientPerformance:

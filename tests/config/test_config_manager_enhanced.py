@@ -16,7 +16,7 @@ import tempfile
 import json
 import yaml
 
-from config.manager import ConfigManager
+from kline_data.config.manager import ConfigManager
 
 
 class TestConfigManagerContract:

@@ -4,8 +4,8 @@ import pytest
 import pandas as pd
 from datetime import datetime
 from unittest.mock import Mock, patch
-from sdk.client import KlineClient
-from utils.constants import DEFAULT_EXCHANGE, DEFAULT_SYMBOL, Timeframe
+from kline_data.sdk.client import KlineClient
+from kline_data.utils.constants import DEFAULT_EXCHANGE, DEFAULT_SYMBOL, Timeframe
 
 
 class TestGetLatest:

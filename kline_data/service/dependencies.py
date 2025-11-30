@@ -21,7 +21,7 @@ def _get_sdk_instance(config_path: Optional[str] = None) -> KlineSDK:
         KlineSDK实例
     """
     if config_path:
-        from config import load_config
+        from kline_data.config import load_config
         config = load_config(config_path)
         return KlineSDK(config=config)
     return KlineSDK()

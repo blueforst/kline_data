@@ -186,7 +186,7 @@ def _interactive_resume(tasks, metadata_mgr, config):
 def _resume_task(task, metadata_mgr, config):
     """恢复下载任务"""
     from datetime import datetime
-    from utils.timezone import parse_datetime
+    from ...utils.timezone import parse_datetime
     
     console.print(f"\n[cyan]开始恢复下载...[/cyan]")
     

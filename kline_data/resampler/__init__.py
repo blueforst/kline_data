@@ -4,14 +4,14 @@
 
 推荐的导入方式:
     # 新代码推荐从 utils.constants 导入常量和函数
-    from utils.constants import Timeframe, OHLCV_AGGREGATION_RULES, get_timeframe_seconds
+    from kline_data.utils.constants import Timeframe, OHLCV_AGGREGATION_RULES, get_timeframe_seconds
 
     # 或者从 resampler 模块导入类
-    from resampler import KlineResampler, SmartResampler
+    from kline_data.resampler import KlineResampler, SmartResampler
 
 使用示例:
-    >>> from utils.constants import Timeframe
-    >>> from resampler import KlineResampler
+    >>> from kline_data.utils.constants import Timeframe
+    >>> from kline_data.resampler import KlineResampler
     >>> resampler = KlineResampler(config)
     >>> result = resampler.resample(df, Timeframe.M1.value, Timeframe.H1.value)
 """

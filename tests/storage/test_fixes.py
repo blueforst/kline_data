@@ -4,10 +4,10 @@ import pandas as pd
 from datetime import datetime, timedelta
 from pathlib import Path
 import shutil
-from config import Config
-from storage.writer import ParquetWriter
-from storage.metadata_manager import MetadataManager
-from storage.models import PartitionInfo
+from kline_data.config import Config
+from kline_data.storage.writer import ParquetWriter
+from kline_data.storage.metadata_manager import MetadataManager
+from kline_data.storage.models import PartitionInfo
 
 
 def test_write_partitioned_append():
@@ -22,8 +22,8 @@ def test_write_partitioned_append():
     symbol = "BTC/USDT"
     interval = "1m"
     
-    # 清理测试数据
-    test_path = config.storage.get_root_path() / 'resampled' / exchange / 'BTCUSDT' / interval
+    # 清理测试数据 (新的统一路径结构)
+    test_path = config.storage.get_root_path() / 'raw' / exchange / 'BTCUSDT' / interval
     if test_path.exists():
         shutil.rmtree(test_path)
     
@@ -89,13 +89,10 @@ def test_partition_info_with_interval():
     exchange = "binance"
     symbol = "ETH/USDT"
     
-    # 清理测试数据
-    test_path1 = config.storage.get_root_path() / 'raw' / exchange / 'ETHUSDT'
-    test_path2 = config.storage.get_root_path() / 'resampled' / exchange / 'ETHUSDT'
-    if test_path1.exists():
-        shutil.rmtree(test_path1)
-    if test_path2.exists():
-        shutil.rmtree(test_path2)
+    # 清理测试数据 (新的统一路径结构)
+    test_path = config.storage.get_root_path() / 'raw' / exchange / 'ETHUSDT'
+    if test_path.exists():
+        shutil.rmtree(test_path)
     
     # 创建两个不同周期的数据（同一月份）
     dates = pd.date_range('2024-01-01 00:00:00', periods=100, freq='1s', tz='UTC')
@@ -136,10 +133,8 @@ def test_partition_info_with_interval():
         print("❌ 测试失败：分区信息混乱")
     
     # 清理
-    if test_path1.exists():
-        shutil.rmtree(test_path1)
-    if test_path2.exists():
-        shutil.rmtree(test_path2)
+    if test_path.exists():
+        shutil.rmtree(test_path)
     metadata_mgr.delete_symbol_metadata(exchange, symbol)
 
 
@@ -158,7 +153,7 @@ def test_delete_time_range_updates_data_range():
     metadata = metadata_mgr.get_symbol_metadata(exchange, symbol)
     
     # 添加多个时间段
-    from storage.models import IntervalRange, IntervalData
+    from kline_data.storage.models import IntervalRange, IntervalData
     metadata.intervals[interval] = IntervalData(
         start_timestamp=1000,
         end_timestamp=5000,
@@ -171,7 +166,7 @@ def test_delete_time_range_updates_data_range():
     )
     
     # 设置初始 data_range
-    from storage.models import DataRange
+    from kline_data.storage.models import DataRange
     metadata.data_range = DataRange.from_timestamps(1000, 5000)
     metadata_mgr.save_symbol_metadata(metadata)
     

@@ -19,8 +19,8 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import psutil
 
-from config.manager import ConfigManager
-from config.schemas import ConfigSchema
+from kline_data.config.manager import ConfigManager
+from kline_data.config.schemas import ConfigSchema
 
 
 class TestConfigPerformance:

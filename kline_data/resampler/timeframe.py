@@ -1,9 +1,9 @@
 """时间周期定义和转换
 
-注意：本模块保留用于向后兼容。新代码应使用 utils.constants 模块中的定义。
+注意：本模块保留用于向后兼容。新代码应使用 kline_data.utils.constants 模块中的定义。
 
 推荐导入方式：
-    from utils.constants import Timeframe, TIMEFRAME_SECONDS, TIMEFRAME_TO_PANDAS
+    from kline_data.utils.constants import Timeframe, TIMEFRAME_SECONDS, TIMEFRAME_TO_PANDAS
 """
 
 from enum import Enum

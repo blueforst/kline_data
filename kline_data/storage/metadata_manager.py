@@ -175,7 +175,7 @@ class MetadataManager:
         Returns:
             IntervalData: 更新后的周期元数据
         """
-        from resampler.timeframe import get_timeframe_seconds
+        from kline_data.resampler.timeframe import get_timeframe_seconds
         from rich.console import Console
         console = Console()
 

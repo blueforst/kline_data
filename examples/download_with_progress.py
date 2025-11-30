@@ -17,10 +17,10 @@ from rich.progress import (
     TimeElapsedColumn
 )
 
-from sdk import KlineClient
+from kline_data.sdk import KlineClient
 
 # 导入全局常量
-from utils.constants import (
+from kline_data.utils.constants import (
     Timeframe,
     DEFAULT_EXCHANGE,
     DEFAULT_SYMBOL,

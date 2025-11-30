@@ -9,7 +9,6 @@ from ..config import Config
 # 导入各个子客户端
 from .query import QueryClient, ChunkedDataFeed
 from .download import DownloadClient
-from .resample import ResampleClient
 from .indicator import IndicatorClient
 from .metadata import MetadataClient
 
@@ -26,12 +25,11 @@ class KlineClient:
     
     整合了所有功能模块的主客户端，提供：
     1. 数据查询（QueryClient）
-    2. 数据下载（DownloadClient）
-    3. 数据重采样（ResampleClient）
-    4. 技术指标（IndicatorClient）
-    5. 元数据查询（MetadataClient）
+    2. 数据下载（DownloadClient）- 支持多种时间周期
+    3. 技术指标（IndicatorClient）
+    4. 元数据查询（MetadataClient）
     
-    所有功能都使用统一的逻辑和配置。
+    所有周期数据直接从CCXT下载，不再使用重采样。
     
     Example:
         >>> from sdk import KlineClient
@@ -76,7 +74,7 @@ class KlineClient:
             config: 配置对象，如果为None使用默认配置
         """
         if config is None:
-            from config import load_config
+            from kline_data.config import load_config
             config = load_config()
         
         self.config = config
@@ -84,7 +82,6 @@ class KlineClient:
         # 初始化各个子客户端
         self.query = QueryClient(config)
         self.download = DownloadClient(config)
-        self.resample = ResampleClient(config)
         self.indicator = IndicatorClient(config)
         self.metadata = MetadataClient(config)
     
@@ -119,7 +116,7 @@ class KlineClient:
             end_time: 结束时间
             interval: 时间周期
             auto_strategy: 是否自动选择策略（包括自动下载）
-            force_strategy: 强制使用策略 ('local', 'ccxt', 'resample')
+            force_strategy: 强制使用策略 ('local', 'ccxt')
             with_indicators: 附加计算的指标列表
 
         Returns:

@@ -15,13 +15,13 @@ import pandas as pd
 from unittest.mock import Mock, patch
 from datetime import datetime, timedelta
 
-from indicators.manager import IndicatorManager
-from indicators.base import BaseIndicator
-from indicators.moving_average import SMA, EMA
-from indicators.macd import MACD
-from indicators.rsi import RSI
-from indicators.bollinger import BollingerBands
-from utils.constants import Timeframe
+from kline_data.indicators.manager import IndicatorManager
+from kline_data.indicators.base import BaseIndicator
+from kline_data.indicators.moving_average import SMA, EMA
+from kline_data.indicators.macd import MACD
+from kline_data.indicators.rsi import RSI
+from kline_data.indicators.bollinger import BollingerBands
+from kline_data.utils.constants import Timeframe
 
 
 class TestIndicatorContract:

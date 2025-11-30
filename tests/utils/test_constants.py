@@ -1,7 +1,7 @@
 """测试全局常量模块"""
 
 import pytest
-from utils.constants import (
+from kline_data.utils.constants import (
     Timeframe,
     TIMEFRAME_SECONDS,
     TIMEFRAME_TO_PANDAS,
@@ -408,8 +408,8 @@ class TestBackwardCompatibility:
 
     def test_import_from_resampler(self):
         """测试从resampler模块导入（向后兼容）"""
-        from resampler.timeframe import Timeframe as OldTimeframe
-        from resampler.timeframe import TIMEFRAME_SECONDS as OLD_SECONDS
+        from kline_data.resampler.timeframe import Timeframe as OldTimeframe
+        from kline_data.resampler.timeframe import TIMEFRAME_SECONDS as OLD_SECONDS
 
         # 应该是同一个对象
         assert OldTimeframe.M1.value == '1m'

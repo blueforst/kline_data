@@ -11,10 +11,10 @@ from datetime import datetime
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from config import load_config
+from kline_data.config import load_config
 
 # 导入更新后的resampler模块（现在使用utils.constants）
-from resampler import (
+from kline_data.resampler import (
     Timeframe,
     TimeframeConverter,
     get_timeframe_seconds,
@@ -26,7 +26,7 @@ from resampler import (
 )
 
 # 从常量模块导入验证函数（推荐使用方式）
-from utils.constants import (
+from kline_data.utils.constants import (
     SUPPORTED_EXCHANGES,
     DEMO_SYMBOL,
     DEFAULT_EXCHANGE,

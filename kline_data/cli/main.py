@@ -82,7 +82,7 @@ def version():
 @app.command()
 def info():
     """显示系统信息"""
-    from config import get_config
+    from kline_data.config import get_config
     
     cfg = get_config()
     

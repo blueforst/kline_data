@@ -16,7 +16,7 @@ import threading
 import psutil
 import os
 
-from sdk.data_feed import ChunkedDataFeed
+from kline_data.sdk.data_feed import ChunkedDataFeed
 
 
 class TestChunkedDataFeedPerformance:

@@ -18,10 +18,10 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from unittest.mock import Mock, patch
 
-from storage.writer import ParquetWriter
-from reader.parquet_reader import ParquetReader
-from storage.metadata_manager import MetadataManager
-from storage.downloader import DownloadManager
+from kline_data.storage.writer import ParquetWriter
+from kline_data.reader.parquet_reader import ParquetReader
+from kline_data.storage.metadata_manager import MetadataManager
+from kline_data.storage.downloader import DownloadManager
 
 
 class TestStorageIOPerformance:

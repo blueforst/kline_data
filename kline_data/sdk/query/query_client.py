@@ -43,7 +43,7 @@ class QueryClient:
             config: 配置对象，如果为None使用默认配置
         """
         if config is None:
-            from config import load_config
+            from kline_data.config import load_config
             config = load_config()
         
         self.config = config
@@ -164,7 +164,7 @@ class QueryClient:
         Returns:
             pd.DataFrame: K线数据，按时间升序排列
         """
-        from utils.timezone import to_utc, datetime_to_timestamp, timestamp_to_datetime
+        from kline_data.utils.timezone import to_utc, datetime_to_timestamp, timestamp_to_datetime
 
         validate_timeframe(interval)
         validate_exchange(exchange)

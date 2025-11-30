@@ -393,7 +393,7 @@ class DataDownloader:
         skip_first_batch_duplicate = checkpoint is not None
         
         # 计算预估总记录数
-        from resampler.timeframe import get_timeframe_seconds
+        from kline_data.resampler.timeframe import get_timeframe_seconds
         interval_seconds = get_timeframe_seconds(self.interval)
         estimated_total_records = int(total_duration / 1000 / interval_seconds) if interval_seconds > 0 else 0
         
@@ -427,7 +427,7 @@ class DataDownloader:
                 skip_first_batch_duplicate = False
                 
                 # 更新时间戳（根据周期移动）
-                from resampler.timeframe import get_timeframe_seconds
+                from kline_data.resampler.timeframe import get_timeframe_seconds
                 interval_ms = get_timeframe_seconds(self.interval) * 1000
                 last_timestamp = ohlcv[-1][0]
                 current_time = last_timestamp + interval_ms
@@ -564,7 +564,7 @@ class DataDownloader:
         if progress <= 0:
             return "Unknown"
         
-        from utils.timezone import parse_datetime
+        from kline_data.utils.timezone import parse_datetime
         start_time = parse_datetime(start_time_str)
         elapsed = (now_utc() - start_time).total_seconds()
         
@@ -594,7 +594,7 @@ class DataDownloader:
             return task_id
         
         # 继续下载（解析为UTC时间）
-        from utils.timezone import parse_datetime
+        from kline_data.utils.timezone import parse_datetime
         start_time = parse_datetime(task.start_time)
         end_time = parse_datetime(task.end_time)
         

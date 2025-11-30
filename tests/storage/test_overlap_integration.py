@@ -51,9 +51,9 @@ def create_test_config():
 
 def test_metadata_manager():
     """测试元数据管理器的重叠检测功能"""
-    from storage.metadata_manager import MetadataManager
-    from storage.models import IntervalRange, IntervalData
-    from utils.timezone import datetime_to_timestamp
+    from kline_data.storage.metadata_manager import MetadataManager
+    from kline_data.storage.models import IntervalRange, IntervalData
+    from kline_data.utils.timezone import datetime_to_timestamp
     
     config, temp_dir = create_test_config()
     
@@ -167,7 +167,7 @@ def test_metadata_manager():
         print(f"  请求范围: {start6} - {end6}")
         print(f"  缺失段数: {len(missing)}")
         for i, (ms, me) in enumerate(missing, 1):
-            from utils.timezone import timestamp_to_datetime
+            from kline_data.utils.timezone import timestamp_to_datetime
             print(f"    段{i}: {timestamp_to_datetime(ms)} - {timestamp_to_datetime(me)}")
         
         # 应该有2个缺失段：9:00-15:00 和 18:00-20:00

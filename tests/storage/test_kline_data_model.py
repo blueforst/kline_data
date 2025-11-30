@@ -14,7 +14,7 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 
-from storage.models import KlineData, TaskStatus
+from kline_data.storage.models import KlineData, TaskStatus
 
 
 class TestKlineDataContract:

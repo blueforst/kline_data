@@ -3,9 +3,9 @@
 import pytest
 import pandas as pd
 from datetime import datetime, timedelta
-from sdk.data_feed import ChunkedDataFeed, BacktraderDataFeed, StreamingDataFeed
-from config import load_config
-from utils.constants import Timeframe, DEFAULT_EXCHANGE, DEFAULT_SYMBOL
+from kline_data.sdk.data_feed import ChunkedDataFeed, BacktraderDataFeed, StreamingDataFeed
+from kline_data.config import load_config
+from kline_data.utils.constants import Timeframe, DEFAULT_EXCHANGE, DEFAULT_SYMBOL
 
 
 class TestChunkedDataFeed:

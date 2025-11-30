@@ -8,10 +8,10 @@ from datetime import datetime
 from rich.console import Console
 from rich.table import Table
 
-from config import get_config
-from storage.metadata_manager import MetadataManager
-from storage.models import TaskStatus
-from storage.downloader import DataDownloader
+from kline_data.config import get_config
+from kline_data.storage.metadata_manager import MetadataManager
+from kline_data.storage.models import TaskStatus
+from kline_data.storage.downloader import DataDownloader
 
 console = Console()
 
@@ -92,7 +92,7 @@ def resume_task_example(task_id: str):
     console.print(f"时间范围: {task.start_time} ~ {task.end_time}")
     
     # 解析时间
-    from utils.timezone import parse_datetime
+    from kline_data.utils.timezone import parse_datetime
     start_time = parse_datetime(task.start_time)
     end_time = parse_datetime(task.end_time)
     

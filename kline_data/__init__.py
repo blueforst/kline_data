@@ -43,12 +43,8 @@ from .reader import (
     DataCache,
 )
 
-# 重采样层
-from .resampler import (
-    KlineResampler,
-    SmartResampler,
-    TimeframeConverter,
-)
+# Note: Resampling functionality has been removed.
+# All timeframe data should be downloaded directly from CCXT.
 
 # 全局常量（从utils.constants导入）
 from .utils.constants import (
@@ -117,10 +113,7 @@ __all__ = [
     'QueryBuilder',
     'DataCache',
     
-    # Resampler
-    'KlineResampler',
-    'SmartResampler',
-    'TimeframeConverter',
+
     
     # Constants (from utils.constants)
     'Timeframe',

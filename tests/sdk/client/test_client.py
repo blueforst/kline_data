@@ -12,12 +12,12 @@ import pandas as pd
 import numpy as np
 
 # 导入被测试的模块
-from sdk.client import KlineClient
-from config import Config
-from storage import DataFetcher, DownloadManager, MetadataManager
-from reader import ParquetReader
-from resampler import KlineResampler
-from indicators import IndicatorManager
+from kline_data.sdk.client import KlineClient
+from kline_data.config import Config
+from kline_data.storage import DataFetcher, DownloadManager, MetadataManager
+from kline_data.reader import ParquetReader
+from kline_data.resampler import KlineResampler
+from kline_data.indicators import IndicatorManager
 
 
 class TestKlineClientInitialization:
@@ -261,7 +261,7 @@ class TestKlineClientDataSourceStrategy:
         client, mock_strategy = mock_client_with_strategy
 
         # 配置策略决策
-        from storage.data_source_strategy import DataSourceDecision
+        from kline_data.storage.data_source_strategy import DataSourceDecision
         mock_decision = DataSourceDecision(
             source='local',
             source_interval=None,
@@ -294,7 +294,7 @@ class TestKlineClientDataSourceStrategy:
         """测试下载数据源决策"""
         client, mock_strategy = mock_client_with_strategy
 
-        from storage.data_source_strategy import DataSourceDecision
+        from kline_data.storage.data_source_strategy import DataSourceDecision
         mock_decision = DataSourceDecision(
             source='ccxt',
             source_interval=None,
@@ -320,7 +320,7 @@ class TestKlineClientDataSourceStrategy:
         """测试重采样数据源决策"""
         client, mock_strategy = mock_client_with_strategy
 
-        from storage.data_source_strategy import DataSourceDecision
+        from kline_data.storage.data_source_strategy import DataSourceDecision
         mock_decision = DataSourceDecision(
             source='resample',
             source_interval='1m',

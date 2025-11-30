@@ -4,15 +4,15 @@
 
 演示如何使用SDK验证和检查K线数据的完整性、质量（使用全局常量）
 """
-from sdk import KlineClient
-from storage.validator import DataValidator
-from storage.metadata_manager import MetadataManager
-from config import get_config
+from kline_data.sdk import KlineClient
+from kline_data.storage.validator import DataValidator
+from kline_data.storage.metadata_manager import MetadataManager
+from kline_data.config import get_config
 from rich.console import Console
 from rich.table import Table
 
 # 导入全局常量
-from utils.constants import (
+from kline_data.utils.constants import (
     Timeframe,
     DEFAULT_EXCHANGE,
     DEFAULT_SYMBOL,

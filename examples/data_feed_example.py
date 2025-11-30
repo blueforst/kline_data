@@ -1,8 +1,8 @@
 """数据流示例 - 演示如何使用分块数据流进行回测"""
 
 from datetime import datetime
-from sdk import ChunkedDataFeed, BacktraderDataFeed, StreamingDataFeed
-from utils.constants import Timeframe, DEFAULT_EXCHANGE, DEFAULT_SYMBOL
+from kline_data.sdk import ChunkedDataFeed, BacktraderDataFeed, StreamingDataFeed
+from kline_data.utils.constants import Timeframe, DEFAULT_EXCHANGE, DEFAULT_SYMBOL
 
 
 def example_chunked_feed():
@@ -138,7 +138,7 @@ def example_backtrader_feed():
     print("-" * 60)
     print("""
 import backtrader as bt
-from sdk import BacktraderDataFeed
+from kline_data.sdk import BacktraderDataFeed
 
 # 创建数据流
 data_feed = BacktraderDataFeed(

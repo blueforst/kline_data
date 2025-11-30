@@ -9,11 +9,11 @@ import tempfile
 from pathlib import Path
 from datetime import datetime, timedelta
 
-from config import load_config
-from storage import ParquetWriter
+from kline_data.config import load_config
+from kline_data.storage import ParquetWriter
 
 # 导入更新后的resampler模块（现在使用utils.constants）
-from resampler import (
+from kline_data.resampler import (
     Timeframe,
     TimeframeConverter,
     get_timeframe_seconds,
@@ -24,7 +24,7 @@ from resampler import (
 )
 
 # 从常量模块导入验证函数（推荐使用方式）
-from utils.constants import (
+from kline_data.utils.constants import (
     SUPPORTED_EXCHANGES,
     DEFAULT_EXCHANGE,
     DEFAULT_SYMBOL,

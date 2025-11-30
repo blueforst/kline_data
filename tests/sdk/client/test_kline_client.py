@@ -13,9 +13,9 @@ from unittest.mock import Mock, patch, call
 from datetime import datetime, timedelta
 import pandas as pd
 
-from sdk.client import KlineClient
-from storage.models import KlineData
-from utils.constants import Timeframe
+from kline_data.sdk.client import KlineClient
+from kline_data.storage.models import KlineData
+from kline_data.utils.constants import Timeframe
 
 
 class TestKlineClientInteraction:

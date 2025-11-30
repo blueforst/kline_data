@@ -31,7 +31,7 @@ class ResampleClient:
             config: 配置对象，如果为None使用默认配置
         """
         if config is None:
-            from config import load_config
+            from kline_data.config import load_config
             config = load_config()
         
         self.config = config

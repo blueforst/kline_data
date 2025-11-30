@@ -18,12 +18,12 @@ import psutil
 import os
 
 # 导入项目模块
-from storage.data_source_strategy import DataSourceStrategy
-from storage.fetcher import DataFetcher
-from storage.downloader import DownloadManager
-from reader.parquet_reader import ParquetReader
-from resampler.kline_resampler import KlineResampler
-from indicators.manager import IndicatorManager
+from kline_data.storage.data_source_strategy import DataSourceStrategy
+from kline_data.storage.fetcher import DataFetcher
+from kline_data.storage.downloader import DownloadManager
+from kline_data.reader.parquet_reader import ParquetReader
+from kline_data.resampler.kline_resampler import KlineResampler
+from kline_data.indicators.manager import IndicatorManager
 
 
 class TestQueryPerformance:

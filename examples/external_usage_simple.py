@@ -17,7 +17,7 @@ if __name__ == '__main__':
     project_root = Path(__file__).parent.parent
     sys.path.insert(0, str(project_root))
 
-from sdk import KlineClient
+from kline_data.sdk import KlineClient
 from datetime import datetime, timedelta
 
 
@@ -92,7 +92,7 @@ def example_3_config_info():
     print("示例3：查看当前配置")
     print("=" * 60)
     
-    from config import load_config
+    from kline_data.config import load_config
     
     config = load_config()
     

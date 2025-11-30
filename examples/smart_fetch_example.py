@@ -1,7 +1,7 @@
 """智能数据获取示例"""
 
 from datetime import datetime
-from sdk import KlineClient
+from kline_data.sdk import KlineClient
 
 
 def example_weekly_data():

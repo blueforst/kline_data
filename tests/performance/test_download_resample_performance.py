@@ -17,10 +17,10 @@ from unittest.mock import Mock, patch, AsyncMock
 import psutil
 import tempfile
 
-from storage.downloader import DownloadManager
-from resampler.kline_resampler import KlineResampler
-from resampler.timeframe import Timeframe
-from storage.fetcher import DataFetcher
+from kline_data.storage.downloader import DownloadManager
+from kline_data.resampler.kline_resampler import KlineResampler
+from kline_data.resampler.timeframe import Timeframe
+from kline_data.storage.fetcher import DataFetcher
 
 
 class TestDownloadResamplePerformance:

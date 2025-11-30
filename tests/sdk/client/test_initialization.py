@@ -2,8 +2,8 @@
 
 import pytest
 from unittest.mock import Mock, patch
-from sdk.client import KlineClient
-from config import Config
+from kline_data.sdk.client import KlineClient
+from kline_data.config import Config
 
 
 class TestClientInitialization:

@@ -17,11 +17,11 @@ def verify_imports():
     
     try:
         # 主客户端
-        from sdk import KlineClient
+        from kline_data.sdk import KlineClient
         print("✅ KlineClient导入成功")
         
         # 子客户端
-        from sdk import (
+        from kline_data.sdk import (
             QueryClient,
             DownloadClient,
             ResampleClient,
@@ -31,7 +31,7 @@ def verify_imports():
         print("✅ 所有子客户端导入成功")
         
         # 数据流
-        from sdk import (
+        from kline_data.sdk import (
             ChunkedDataFeed,
             BacktraderDataFeed,
             StreamingDataFeed
@@ -42,7 +42,7 @@ def verify_imports():
         import warnings
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            from sdk.client import KlineClient as OldClient
+            from kline_data.sdk.client import KlineClient as OldClient
             if w and any("deprecated" in str(warning.message).lower() for warning in w):
                 print("✅ 旧接口正确显示废弃警告")
             else:
@@ -62,7 +62,7 @@ def verify_client_structure():
     print("=" * 60)
     
     try:
-        from sdk import KlineClient
+        from kline_data.sdk import KlineClient
         
         client = KlineClient()
         
@@ -104,7 +104,7 @@ def verify_sub_clients():
     print("=" * 60)
     
     try:
-        from sdk import (
+        from kline_data.sdk import (
             QueryClient,
             DownloadClient,
             ResampleClient,
@@ -139,7 +139,7 @@ def verify_data_feed_integration():
     print("=" * 60)
     
     try:
-        from sdk import KlineClient
+        from kline_data.sdk import KlineClient
         
         client = KlineClient()
         
@@ -178,7 +178,7 @@ def verify_backward_compatibility():
         # 测试旧的client导入
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            from sdk.client import KlineClient as OldClient
+            from kline_data.sdk.client import KlineClient as OldClient
             
             has_warning = any("deprecated" in str(warning.message).lower() for warning in w)
             if has_warning:
@@ -189,7 +189,7 @@ def verify_backward_compatibility():
         # 测试旧的data_feed导入
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            from sdk.data_feed import ChunkedDataFeed as OldFeed
+            from kline_data.sdk.data_feed import ChunkedDataFeed as OldFeed
             
             has_warning = any("deprecated" in str(warning.message).lower() for warning in w)
             if has_warning:

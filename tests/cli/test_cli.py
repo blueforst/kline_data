@@ -9,8 +9,8 @@ from pathlib import Path
 import tempfile
 import yaml
 
-from cli.main import app
-from config import load_config, ConfigManager
+from kline_data.cli.main import app
+from kline_data.config import load_config, ConfigManager
 
 runner = CliRunner()
 
@@ -232,7 +232,7 @@ class TestCLIOutput:
 
 def test_cli_import():
     """测试CLI模块导入"""
-    from cli import get_app, get_cli_main
+    from kline_data.cli import get_app, get_cli_main
     app = get_app()
     cli_main = get_cli_main()
     assert app is not None
@@ -241,7 +241,7 @@ def test_cli_import():
 
 def test_cli_commands_import():
     """测试CLI命令导入"""
-    from cli.commands import download, query, config_cmd, server
+    from kline_data.cli.commands import download, query, config_cmd, server
     assert download.app is not None
     assert query.app is not None
     assert config_cmd.app is not None

@@ -6,8 +6,8 @@ import tempfile
 from pathlib import Path
 from datetime import datetime, timedelta
 
-from config import load_config
-from storage import (
+from kline_data.config import load_config
+from kline_data.storage import (
     KlineData,
     DataValidator,
     ParquetWriter,
@@ -16,7 +16,7 @@ from storage import (
 )
 
 # 导入全局常量
-from utils.constants import (
+from kline_data.utils.constants import (
     DEFAULT_EXCHANGE,
     DEFAULT_SYMBOL,
     TEST_SYMBOLS,

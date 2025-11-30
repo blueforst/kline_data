@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from config import load_config
-from reader import (
+from kline_data.config import load_config
+from kline_data.reader import (
     LRUCache,
     DataCache,
     ParquetReader,

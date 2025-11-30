@@ -22,8 +22,8 @@ import tempfile
 from pathlib import Path
 import tempfile as tf
 
-from service.server import app
-from service.api import KlineAPI
+from kline_data.service.server import app
+from kline_data.service.api import KlineAPI
 from fastapi.testclient import TestClient
 
 

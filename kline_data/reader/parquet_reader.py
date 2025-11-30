@@ -216,6 +216,8 @@ class ParquetReader:
         """
         获取需要读取的分区文件列表
         
+        新的统一结构: raw/exchange/symbol/interval/year/month/data.parquet
+        
         Args:
             exchange: 交易所
             symbol: 交易对
@@ -228,11 +230,8 @@ class ParquetReader:
         """
         symbol_id = symbol.replace('/', '')
         
-        # 确定基础路径
-        if interval == '1s':
-            base_path = self.root_path / 'raw' / exchange / symbol_id
-        else:
-            base_path = self.root_path / 'resampled' / exchange / symbol_id / interval
+        # 统一路径结构：所有周期数据都在 raw 目录下，按周期分子目录
+        base_path = self.root_path / 'raw' / exchange / symbol_id / interval
         
         if not base_path.exists():
             return []
@@ -394,6 +393,8 @@ class ParquetReader:
         """
         获取可用的数据日期列表
         
+        新的统一结构: raw/exchange/symbol/interval/year/month/data.parquet
+        
         Args:
             exchange: 交易所
             symbol: 交易对
@@ -404,11 +405,8 @@ class ParquetReader:
         """
         symbol_id = symbol.replace('/', '')
         
-        # 确定基础路径
-        if interval == '1s':
-            base_path = self.root_path / 'raw' / exchange / symbol_id
-        else:
-            base_path = self.root_path / 'resampled' / exchange / symbol_id / interval
+        # 统一路径结构：所有周期数据都在 raw 目录下，按周期分子目录
+        base_path = self.root_path / 'raw' / exchange / symbol_id / interval
         
         if not base_path.exists():
             return []

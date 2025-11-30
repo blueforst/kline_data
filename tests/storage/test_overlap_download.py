@@ -1,9 +1,9 @@
 """测试重叠数据下载逻辑"""
 
 from datetime import datetime, timedelta
-from config import Config
-from storage.metadata_manager import MetadataManager
-from storage.models import IntervalRange, IntervalData
+from kline_data.config import Config
+from kline_data.storage.metadata_manager import MetadataManager
+from kline_data.storage.models import IntervalRange, IntervalData
 
 def test_calculate_missing_ranges():
     """测试缺失范围计算"""
@@ -79,7 +79,7 @@ def test_calculate_missing_ranges():
 
 def test_merge_ranges():
     """测试时间段合并"""
-    from storage.metadata_manager import MetadataManager
+    from kline_data.storage.metadata_manager import MetadataManager
     
     print("\n测试时间段合并功能:")
     

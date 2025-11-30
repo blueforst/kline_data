@@ -40,13 +40,30 @@ kline info
 kline config show
 ```
 
-### 第四步：下载数据（示例）
+### 第四步：下载数据（支持多种时间周期）
 
 **注意**: 需要配置CCXT相关的交易所API（如有代理需求，请先配置代理）
 
 ```bash
-# 下载指定时间范围的1秒K线数据
-# 注意：这是一个示例，实际运行会从交易所下载数据
+# 下载1秒K线数据（默认）
+kline download start \
+    --symbol BTC/USDT \
+    --start 2024-01-01 \
+    --end 2024-01-31
+
+# 下载1小时K线数据
+kline download start \
+    --symbol BTC/USDT \
+    --start 2024-01-01 \
+    --interval 1h
+
+# 下载4小时K线数据（简写形式）
+kline download start -s BTC/USDT --start 2024-01-01 -i 4h
+
+# 下载1天K线数据
+kline download start -s BTC/USDT --start 2024-01-01 -i 1d
+
+# 从交易所最早可用时间开始下载
 kline download start \
   --symbol BTC/USDT \
   --exchange binance \

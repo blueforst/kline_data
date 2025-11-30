@@ -1,11 +1,11 @@
 """K线数据重采样
 
 此模块提供K线数据的重采样功能，支持不同时间周期之间的转换。
-所有硬编码字符串已替换为从 utils.constants 导入的全局常量。
+所有硬编码字符串已替换为从 kline_data.utils.constants 导入的全局常量。
 
 使用示例:
-    >>> from utils.constants import Timeframe, OHLCV_AGGREGATION_RULES
-    >>> from resampler.kline_resampler import KlineResampler
+    >>> from kline_data.utils.constants import Timeframe, OHLCV_AGGREGATION_RULES
+    >>> from kline_data.resampler.kline_resampler import KlineResampler
     >>> resampler = KlineResampler(config)
     >>> result = resampler.resample(df, Timeframe.M1.value, Timeframe.H1.value)
 """
@@ -34,7 +34,7 @@ from ..utils.constants import (
 # 延迟导入函数以避免循环导入
 def _get_timeframe_functions():
     """延迟导入时间周期相关函数"""
-    from utils.constants import (
+    from kline_data.utils.constants import (
         validate_timeframe,
         get_timeframe_seconds,
     )
@@ -409,7 +409,7 @@ class SmartResampler:
             pd.DataFrame: 重采样后的数据
         """
         # 导入需要的常量
-        from utils.constants import TIMEFRAME_SECONDS
+        from kline_data.utils.constants import TIMEFRAME_SECONDS
 
         # 尝试直接读取目标周期数据
         try:

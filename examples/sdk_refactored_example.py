@@ -5,7 +5,7 @@
 """
 
 from datetime import datetime
-from sdk import KlineClient
+from kline_data.sdk import KlineClient
 
 def example_basic_usage():
     """基本用法示例"""
@@ -65,7 +65,7 @@ def example_sub_clients():
     print("示例3: 使用子客户端")
     print("=" * 60)
     
-    from sdk import QueryClient, IndicatorClient
+    from kline_data.sdk import QueryClient, IndicatorClient
     
     # 只使用查询客户端
     query = QueryClient()

@@ -22,14 +22,17 @@ def download_data(
     exchange: str = typer.Option("binance", "--exchange", "-e", help="交易所名称"),
     start: str = typer.Option(..., "--start", help="开始时间 (YYYY-MM-DD 或 'all' 表示从交易所最早可用时间开始)"),
     end: Optional[str] = typer.Option(None, "--end", help="结束时间 (YYYY-MM-DD)，不指定则到当前"),
+    interval: str = typer.Option("1s", "--interval", "-i", help="时间周期 (1s, 1m, 5m, 15m, 30m, 1h, 4h, 1d等)"),
     force: bool = typer.Option(False, "--force", "-f", help="强制重新下载（删除指定时间范围的现有数据）"),
 ):
     """
-    下载K线数据
+    下载K线数据（支持多种时间周期）
     
     示例:
         kline download start --symbol BTC/USDT --start 2024-01-01
         kline download start -s ETH/USDT -e binance --start 2024-01-01 --end 2024-01-31
+        kline download start --symbol BTC/USDT --start 2024-01-01 --interval 1h  # 下载1小时数据
+        kline download start -s BTC/USDT --start 2024-01-01 -i 4h  # 下载4小时数据
         kline download start --symbol BTC/USDT --start 2024-01-01 --force  # 强制重新下载
         kline download start -s BTC/USDT --start all  # 从交易所最早可用时间开始下载
     """
@@ -39,11 +42,11 @@ def download_data(
             # 自动查找交易所的最早数据时间
             console.print(f"[cyan]正在查询交易所 [bold]{exchange}[/bold] 的最早可用数据时间...[/cyan]")
             
-            from storage.downloader import DataDownloader
+            from kline_data.storage.downloader import DataDownloader
             config = get_config()
             
             # 创建临时下载器实例来查询最早时间
-            temp_downloader = DataDownloader(exchange, symbol, config, interval='1s')
+            temp_downloader = DataDownloader(exchange, symbol, config, interval=interval)
             earliest_timestamp = temp_downloader.get_earliest_timestamp()
             
             if earliest_timestamp is None:
@@ -60,6 +63,7 @@ def download_data(
         console.print(f"[cyan]开始下载数据...[/cyan]")
         console.print(f"交易对: [bold]{symbol}[/bold]")
         console.print(f"交易所: [bold]{exchange}[/bold]")
+        console.print(f"时间周期: [bold]{interval}[/bold]")
         console.print(f"时间范围: [bold]{start_time.date()}[/bold] 到 [bold]{end_time.date()}[/bold]\n")
         
         # 创建客户端
@@ -102,6 +106,7 @@ def download_data(
                         exchange=exchange,
                         start_time=start_time,
                         end_time=end_time,
+                        interval=interval,
                         force=force,
                         progress_callback=update_progress,
                         interrupt_handler=stop_progress,
@@ -129,21 +134,24 @@ def download_data(
 def update_data(
     symbol: str = typer.Option(..., "--symbol", "-s", help="交易对符号"),
     exchange: str = typer.Option("binance", "--exchange", "-e", help="交易所名称"),
+    interval: str = typer.Option("1s", "--interval", "-i", help="时间周期 (1s, 1m, 5m, 15m, 30m, 1h, 4h, 1d等)"),
 ):
     """
     更新K线数据（增量下载）
     
     示例:
         kline download update --symbol BTC/USDT
-        kline download update -s ETH/USDT -e binance
+        kline download update -s ETH/USDT -e binance --interval 1h
+        kline download update -s BTC/USDT -i 4h
     """
     try:
         console.print(f"[cyan]更新数据...[/cyan]")
         console.print(f"交易对: [bold]{symbol}[/bold]")
         console.print(f"交易所: [bold]{exchange}[/bold]")
+        console.print(f"时间周期: [bold]{interval}[/bold]")
         
         with KlineClient() as client:
-            result = client.update(symbol=symbol, exchange=exchange)
+            result = client.update(symbol=symbol, exchange=exchange, interval=interval)
             
             if result.get("updated", False):
                 console.print(f"[green]✓[/green] 更新完成!")

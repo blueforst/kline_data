@@ -14,12 +14,12 @@
 """
 
 from datetime import datetime
-from sdk import KlineClient
+from kline_data.sdk import KlineClient
 from rich.console import Console
 from rich.table import Table
 
 # 导入全局常量
-from utils.constants import (
+from kline_data.utils.constants import (
     # 时间周期枚举
     Timeframe,
 
@@ -223,7 +223,7 @@ def demonstrate_practical_example():
         console.print("\n📝 代码示例:")
         console.print("""
 # 使用常量的完整示例
-from utils.constants import (
+from kline_data.utils.constants import (
     DEFAULT_EXCHANGE, DEFAULT_SYMBOL, Timeframe,
     OHLCV_COLUMNS, validate_timeframe
 )

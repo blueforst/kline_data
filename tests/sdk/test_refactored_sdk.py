@@ -15,12 +15,12 @@ class TestModularImports:
     
     def test_import_sdk_client(self):
         """测试导入统一客户端"""
-        from sdk import KlineClient
+        from kline_data.sdk import KlineClient
         assert KlineClient is not None
     
     def test_import_sub_clients(self):
         """测试导入子客户端"""
-        from sdk import (
+        from kline_data.sdk import (
             QueryClient,
             DownloadClient,
             ResampleClient,
@@ -35,7 +35,7 @@ class TestModularImports:
     
     def test_import_data_feeds(self):
         """测试导入数据流"""
-        from sdk import (
+        from kline_data.sdk import (
             ChunkedDataFeed,
             BacktraderDataFeed,
             StreamingDataFeed
@@ -59,7 +59,7 @@ class TestUnifiedClientStructure:
         mock_resample, mock_download, mock_query
     ):
         """测试统一客户端初始化"""
-        from sdk import KlineClient
+        from kline_data.sdk import KlineClient
         
         mock_config = MagicMock()
         mock_load_config.return_value = mock_config
@@ -88,7 +88,7 @@ class TestQueryClientDataFeedIntegration:
     @patch('sdk.query.query_client.load_config')
     def test_data_feed_uses_query_client(self, mock_load_config, mock_fetcher):
         """测试DataFeed使用QueryClient"""
-        from sdk.query import ChunkedDataFeed
+        from kline_data.sdk.query import ChunkedDataFeed
         
         mock_config = MagicMock()
         mock_load_config.return_value = mock_config
@@ -133,7 +133,7 @@ class TestBackwardCompatibility:
             warnings.simplefilter("always")
             
             # 导入旧的client（会触发警告）
-            from sdk.client import KlineClient
+            from kline_data.sdk.client import KlineClient
             
             # 验证有警告
             assert len(w) >= 1
@@ -148,7 +148,7 @@ class TestBackwardCompatibility:
             warnings.simplefilter("always")
             
             # 导入旧的data_feed（会触发警告）
-            from sdk.data_feed import ChunkedDataFeed
+            from kline_data.sdk.data_feed import ChunkedDataFeed
             
             # 验证有警告
             assert len(w) >= 1
@@ -161,7 +161,7 @@ class TestIndicatorClient:
     
     def test_indicator_client_calculate(self):
         """测试指标计算"""
-        from sdk import IndicatorClient
+        from kline_data.sdk import IndicatorClient
         
         # 创建测试数据
         df = pd.DataFrame({
@@ -189,7 +189,7 @@ class TestSubClientIsolation:
     @patch('sdk.query.query_client.load_config')
     def test_query_client_standalone(self, mock_load_config):
         """测试QueryClient可独立使用"""
-        from sdk import QueryClient
+        from kline_data.sdk import QueryClient
         
         mock_config = MagicMock()
         mock_load_config.return_value = mock_config
@@ -203,7 +203,7 @@ class TestSubClientIsolation:
     @patch('sdk.download.download_client.load_config')
     def test_download_client_standalone(self, mock_load_config):
         """测试DownloadClient可独立使用"""
-        from sdk import DownloadClient
+        from kline_data.sdk import DownloadClient
         
         mock_config = MagicMock()
         mock_load_config.return_value = mock_config
@@ -216,7 +216,7 @@ class TestSubClientIsolation:
     @patch('sdk.resample.resample_client.load_config')
     def test_resample_client_standalone(self, mock_load_config):
         """测试ResampleClient可独立使用"""
-        from sdk import ResampleClient
+        from kline_data.sdk import ResampleClient
         
         mock_config = MagicMock()
         mock_load_config.return_value = mock_config

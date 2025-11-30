@@ -7,7 +7,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from config import ConfigManager, load_config
+from kline_data.config import ConfigManager, load_config
 
 
 def example_basic_usage():

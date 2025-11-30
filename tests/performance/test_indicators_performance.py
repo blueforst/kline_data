@@ -15,8 +15,8 @@ from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from unittest.mock import patch
 
-from indicators.manager import IndicatorManager
-from indicators.base import IndicatorBase
+from kline_data.indicators.manager import IndicatorManager
+from kline_data.indicators.base import IndicatorBase
 
 
 class TestIndicatorsPerformance:
@@ -586,7 +586,7 @@ class TestIndicatorsPerformance:
     @pytest.mark.benchmark(group="indicators")
     def test_custom_indicator_performance(self, perf_monitor):
         """Test performance of custom indicator implementations"""
-        from indicators.base import IndicatorBase
+        from kline_data.indicators.base import IndicatorBase
 
         # Create a custom indicator for testing
         class CustomMomentumIndicator(IndicatorBase):

@@ -32,7 +32,7 @@ class DownloadClient:
             config: 配置对象，如果为None使用默认配置
         """
         if config is None:
-            from config import load_config
+            from kline_data.config import load_config
             config = load_config()
         
         self.config = config
@@ -108,7 +108,7 @@ class DownloadClient:
         Returns:
             Optional[datetime]: 最早可用时间，如果获取失败返回None
         """
-        from storage.downloader import DataDownloader
+        from kline_data.storage.downloader import DataDownloader
 
         validate_timeframe(interval)
         validate_exchange(exchange)

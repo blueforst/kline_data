@@ -18,10 +18,10 @@ import psutil
 import statistics
 import gc
 
-from sdk.client import KlineClient
-from reader.parquet_reader import ParquetReader
-from storage.writer import ParquetWriter
-from indicators.manager import IndicatorManager
+from kline_data.sdk.client import KlineClient
+from kline_data.reader.parquet_reader import ParquetReader
+from kline_data.storage.writer import ParquetWriter
+from kline_data.indicators.manager import IndicatorManager
 
 
 class PerformanceThresholdValidator:

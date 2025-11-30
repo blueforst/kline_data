@@ -8,9 +8,9 @@
 """
 
 from datetime import datetime, timedelta
-from config import Config
-from storage.downloader import DownloadManager
-from storage.metadata_manager import MetadataManager
+from kline_data.config import Config
+from kline_data.storage.downloader import DownloadManager
+from kline_data.storage.metadata_manager import MetadataManager
 
 def demo_overlap_download():
     """演示重叠下载优化"""
@@ -39,8 +39,8 @@ def demo_overlap_download():
     print("\n模拟场景：假设这次下载成功...")
     
     # 模拟添加元数据（实际下载会自动添加）
-    from storage.models import IntervalRange, IntervalData
-    from utils.timezone import datetime_to_timestamp
+    from kline_data.storage.models import IntervalRange, IntervalData
+    from kline_data.utils.timezone import datetime_to_timestamp
     
     start1_ts = datetime_to_timestamp(start1)
     end1_ts = datetime_to_timestamp(end1)
@@ -82,7 +82,7 @@ def demo_overlap_download():
     if missing_ranges:
         print(f"  需要下载:")
         for i, (ms, me) in enumerate(missing_ranges, 1):
-            from utils.timezone import timestamp_to_datetime, format_datetime
+            from kline_data.utils.timezone import timestamp_to_datetime, format_datetime
             ms_dt = timestamp_to_datetime(ms)
             me_dt = timestamp_to_datetime(me)
             duration = (me - ms) / 1000 / 3600  # 小时
@@ -174,7 +174,7 @@ def demo_overlap_download():
     if missing_ranges:
         print(f"  需要下载:")
         for i, (ms, me) in enumerate(missing_ranges, 1):
-            from utils.timezone import timestamp_to_datetime, format_datetime
+            from kline_data.utils.timezone import timestamp_to_datetime, format_datetime
             ms_dt = timestamp_to_datetime(ms)
             me_dt = timestamp_to_datetime(me)
             duration = (me - ms) / 1000 / 3600  # 小时
