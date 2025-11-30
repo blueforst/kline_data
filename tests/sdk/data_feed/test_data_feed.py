@@ -3,7 +3,7 @@
 import pytest
 import pandas as pd
 from datetime import datetime, timedelta
-from kline_data.sdk.data_feed import ChunkedDataFeed, BacktraderDataFeed, StreamingDataFeed
+from kline_data.sdk.query.data_feed import ChunkedDataFeed
 from kline_data.config import load_config
 from kline_data.utils.constants import Timeframe, DEFAULT_EXCHANGE, DEFAULT_SYMBOL
 
@@ -162,117 +162,64 @@ class TestChunkedDataFeed:
         assert len(chunks) == 0 or all(chunk.empty for chunk in chunks)
 
 
-class TestBacktraderDataFeed:
-    """测试BacktraderDataFeed"""
-    
+class TestChunkedDataFeedAdvanced:
+    """测试ChunkedDataFeed高级功能"""
+
     @pytest.fixture
     def config(self):
         """加载配置"""
         return load_config()
-    
-    @pytest.fixture
-    def bt_feed(self, config):
-        """创建测试数据流"""
-        return BacktraderDataFeed(
+
+    def test_memory_efficiency(self, config):
+        """测试内存效率"""
+        # 创建大数据流测试内存效率
+        feed = ChunkedDataFeed(
+            exchange=DEFAULT_EXCHANGE,
+            symbol=DEFAULT_SYMBOL,
+            start_time=datetime(2023, 1, 1),
+            end_time=datetime(2024, 1, 1),
+            interval=Timeframe.H1.value,
+            chunk_size=1000,  # 小块大小
+            config=config
+        )
+
+        # 测试统计信息
+        stats = feed.get_stats()
+        assert 'exchange' in stats
+        assert 'symbol' in stats
+        assert 'interval' in stats
+        assert 'chunk_size' in stats
+        assert stats['chunk_size'] == 1000
+
+    def test_iterator_methods(self, config):
+        """测试不同的迭代方法"""
+        feed = ChunkedDataFeed(
             exchange=DEFAULT_EXCHANGE,
             symbol=DEFAULT_SYMBOL,
             start_time=datetime(2024, 1, 1),
-            end_time=datetime(2024, 1, 2),
+            end_time=datetime(2024, 1, 1, 5, 0),  # 5小时
             interval=Timeframe.H1.value,
             chunk_size=10,
             config=config
         )
-    
-    def test_to_backtrader_format(self, bt_feed):
-        """测试转换为backtrader格式"""
-        df = bt_feed.to_backtrader_format(max_rows=20)
-        
-        assert isinstance(df, pd.DataFrame)
-        
-        if not df.empty:
-            # 检查索引是datetime
-            assert isinstance(df.index, pd.DatetimeIndex)
-            
-            # 检查必需的列
-            required_columns = ['open', 'high', 'low', 'close', 'volume', 'openinterest']
-            for col in required_columns:
-                assert col in df.columns
-            
-            # openinterest应该是0
-            assert all(df['openinterest'] == 0)
-    
-    def test_get_backtrader_params(self, bt_feed):
-        """测试获取backtrader参数"""
-        params = bt_feed.get_backtrader_params()
-        
-        assert isinstance(params, dict)
-        assert 'datetime' in params
-        assert 'open' in params
-        assert 'high' in params
-        assert 'low' in params
-        assert 'close' in params
-        assert 'volume' in params
-        assert 'openinterest' in params
-        
-        # 检查值
-        assert params['open'] == 'open'
-        assert params['high'] == 'high'
-        assert params['low'] == 'low'
-        assert params['close'] == 'close'
-        assert params['volume'] == 'volume'
-        assert params['openinterest'] == 'openinterest'
 
+        # 测试行迭代器
+        rows = list(feed.iter_rows())
+        if rows:
+            for row in rows[:5]:  # 只检查前5行
+                assert len(row) == 6  # timestamp, open, high, low, close, volume
+                assert isinstance(row[0], pd.Timestamp)  # timestamp
 
-class TestStreamingDataFeed:
-    """测试StreamingDataFeed"""
-    
-    @pytest.fixture
-    def config(self):
-        """加载配置"""
-        return load_config()
-    
-    @pytest.fixture
-    def stream_feed(self, config):
-        """创建测试数据流"""
-        return StreamingDataFeed(
-            exchange=DEFAULT_EXCHANGE,
-            symbol=DEFAULT_SYMBOL,
-            start_time=datetime(2024, 1, 1),
-            end_time=datetime(2024, 1, 1, 1, 0),  # 1小时数据
-            interval=Timeframe.M1.value,
-            chunk_size=10,
-            config=config,
-            playback_speed=100.0  # 100倍速
-        )
-    
-    def test_playback_speed(self, stream_feed):
-        """测试播放速度"""
-        assert stream_feed.playback_speed == 100.0
-    
-    def test_get_sleep_time(self, stream_feed):
-        """测试获取延迟时间"""
-        sleep_time = stream_feed.get_sleep_time()
-        
-        # 1分钟 / 100倍速 = 0.6秒
-        expected_sleep = 60.0 / 100.0
-        assert abs(sleep_time - expected_sleep) < 0.01
-    
-    def test_stream(self, stream_feed):
-        """测试流式迭代"""
-        bars = []
-        
-        # 只测试前几根
-        for bar in stream_feed.stream():
-            bars.append(bar)
-            if len(bars) >= 3:
-                break
-        
-        assert len(bars) > 0
-        
-        # 检查字典格式
-        for bar in bars:
-            assert 'timestamp' in bar
-            assert 'close' in bar
+        # 测试字典迭代器
+        dicts = list(feed.iter_dicts())
+        if dicts:
+            for bar in dicts[:5]:  # 只检查前5个
+                assert 'timestamp' in bar
+                assert 'open' in bar
+                assert 'high' in bar
+                assert 'low' in bar
+                assert 'close' in bar
+                assert 'volume' in bar
 
 
 class TestDataFeedEdgeCases:

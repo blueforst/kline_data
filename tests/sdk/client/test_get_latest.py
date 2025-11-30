@@ -4,7 +4,7 @@ import pytest
 import pandas as pd
 from datetime import datetime
 from unittest.mock import Mock, patch
-from kline_data.sdk.client import KlineClient
+from kline_data.sdk.sdk_client import KlineClient
 from kline_data.utils.constants import DEFAULT_EXCHANGE, DEFAULT_SYMBOL, Timeframe
 
 
@@ -14,7 +14,7 @@ class TestGetLatest:
     @pytest.fixture
     def client(self):
         """创建测试客户端"""
-        with patch('sdk.client.load_config'):
+        with patch('kline_data.config.load_config'):
             return KlineClient()
     
     @pytest.fixture

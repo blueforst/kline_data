@@ -12,12 +12,14 @@ import pandas as pd
 import numpy as np
 
 # 导入被测试的模块
-from kline_data.sdk.client import KlineClient
+from kline_data.sdk.sdk_client import KlineClient
 from kline_data.config import Config
-from kline_data.storage import DataFetcher, DownloadManager, MetadataManager
-from kline_data.reader import ParquetReader
-from kline_data.resampler import KlineResampler
-from kline_data.indicators import IndicatorManager
+from kline_data.storage.fetcher import DataFetcher
+from kline_data.storage.downloader import DownloadManager
+from kline_data.storage.metadata_manager import MetadataManager
+from kline_data.reader.parquet_reader import ParquetReader
+from kline_data.resampler.kline_resampler import KlineResampler
+from kline_data.indicators.manager import IndicatorManager
 
 
 class TestKlineClientInitialization:
@@ -25,15 +27,15 @@ class TestKlineClientInitialization:
 
     def test_init_with_default_config(self, mock_config):
         """测试使用默认配置初始化"""
-        with patch('sdk.client.load_config') as mock_load:
+        with patch('kline_data.config.load_config') as mock_load:
             mock_load.return_value = mock_config
 
-            with patch('sdk.client.DataFetcher') as mock_fetcher, \
-                 patch('sdk.client.DownloadManager') as mock_downloader, \
-                 patch('sdk.client.MetadataManager') as mock_metadata, \
-                 patch('sdk.client.ParquetReader') as mock_reader, \
-                 patch('sdk.client.KlineResampler') as mock_resampler, \
-                 patch('sdk.client.IndicatorManager') as mock_indicator:
+            with patch('kline_data.sdk.sdk_client.DataFetcher') as mock_fetcher, \
+                 patch('kline_data.sdk.sdk_client.DownloadManager') as mock_downloader, \
+                 patch('kline_data.sdk.sdk_client.MetadataManager') as mock_metadata, \
+                 patch('kline_data.sdk.sdk_client.ParquetReader') as mock_reader, \
+                 patch('kline_data.sdk.sdk_client.KlineResampler') as mock_resampler, \
+                 patch('kline_data.sdk.sdk_client.IndicatorManager') as mock_indicator:
 
                 client = KlineClient()
 
@@ -59,12 +61,12 @@ class TestKlineClientInitialization:
 
     def test_init_with_custom_config(self, mock_config):
         """测试使用自定义配置初始化"""
-        with patch('sdk.client.DataFetcher'), \
-             patch('sdk.client.DownloadManager'), \
-             patch('sdk.client.MetadataManager'), \
-             patch('sdk.client.ParquetReader'), \
-             patch('sdk.client.KlineResampler'), \
-             patch('sdk.client.IndicatorManager'):
+        with patch('kline_data.sdk.sdk_client.DataFetcher'), \
+             patch('kline_data.sdk.sdk_client.DownloadManager'), \
+             patch('kline_data.sdk.sdk_client.MetadataManager'), \
+             patch('kline_data.sdk.sdk_client.ParquetReader'), \
+             patch('kline_data.sdk.sdk_client.KlineResampler'), \
+             patch('kline_data.sdk.sdk_client.IndicatorManager'):
 
             client = KlineClient(config=mock_config)
 
@@ -101,12 +103,12 @@ class TestKlineClientDataRetrieval:
     @pytest.fixture
     def mock_client(self, mock_config):
         """创建mock客户端"""
-        with patch('sdk.client.DataFetcher') as mock_fetcher_class, \
-             patch('sdk.client.DownloadManager'), \
-             patch('sdk.client.MetadataManager'), \
-             patch('sdk.client.ParquetReader'), \
-             patch('sdk.client.KlineResampler'), \
-             patch('sdk.client.IndicatorManager'):
+        with patch('kline_data.sdk.sdk_client.DataFetcher') as mock_fetcher_class, \
+             patch('kline_data.sdk.sdk_client.DownloadManager'), \
+             patch('kline_data.sdk.sdk_client.MetadataManager'), \
+             patch('kline_data.sdk.sdk_client.ParquetReader'), \
+             patch('kline_data.sdk.sdk_client.KlineResampler'), \
+             patch('kline_data.sdk.sdk_client.IndicatorManager'):
 
             mock_fetcher = Mock()
             mock_fetcher_class.return_value = mock_fetcher
@@ -427,12 +429,12 @@ class TestKlineClientErrorHandling:
     @pytest.fixture
     def mock_client(self, mock_config):
         """创建mock客户端"""
-        with patch('sdk.client.DataFetcher'), \
-             patch('sdk.client.DownloadManager'), \
-             patch('sdk.client.MetadataManager'), \
-             patch('sdk.client.ParquetReader'), \
-             patch('sdk.client.KlineResampler'), \
-             patch('sdk.client.IndicatorManager'):
+        with patch('kline_data.sdk.sdk_client.DataFetcher'), \
+             patch('kline_data.sdk.sdk_client.DownloadManager'), \
+             patch('kline_data.sdk.sdk_client.MetadataManager'), \
+             patch('kline_data.sdk.sdk_client.ParquetReader'), \
+             patch('kline_data.sdk.sdk_client.KlineResampler'), \
+             patch('kline_data.sdk.sdk_client.IndicatorManager'):
 
             return KlineClient(config=mock_config)
 
@@ -525,12 +527,12 @@ class TestKlineClientPerformance:
     @pytest.fixture
     def mock_client(self, mock_config):
         """创建mock客户端"""
-        with patch('sdk.client.DataFetcher'), \
-             patch('sdk.client.DownloadManager'), \
-             patch('sdk.client.MetadataManager'), \
-             patch('sdk.client.ParquetReader'), \
-             patch('sdk.client.KlineResampler'), \
-             patch('sdk.client.IndicatorManager'):
+        with patch('kline_data.sdk.sdk_client.DataFetcher'), \
+             patch('kline_data.sdk.sdk_client.DownloadManager'), \
+             patch('kline_data.sdk.sdk_client.MetadataManager'), \
+             patch('kline_data.sdk.sdk_client.ParquetReader'), \
+             patch('kline_data.sdk.sdk_client.KlineResampler'), \
+             patch('kline_data.sdk.sdk_client.IndicatorManager'):
 
             return KlineClient(config=mock_config)
 
@@ -596,12 +598,12 @@ class TestKlineClientEdgeCases:
     @pytest.fixture
     def mock_client(self, mock_config):
         """创建mock客户端"""
-        with patch('sdk.client.DataFetcher'), \
-             patch('sdk.client.DownloadManager'), \
-             patch('sdk.client.MetadataManager'), \
-             patch('sdk.client.ParquetReader'), \
-             patch('sdk.client.KlineResampler'), \
-             patch('sdk.client.IndicatorManager'):
+        with patch('kline_data.sdk.sdk_client.DataFetcher'), \
+             patch('kline_data.sdk.sdk_client.DownloadManager'), \
+             patch('kline_data.sdk.sdk_client.MetadataManager'), \
+             patch('kline_data.sdk.sdk_client.ParquetReader'), \
+             patch('kline_data.sdk.sdk_client.KlineResampler'), \
+             patch('kline_data.sdk.sdk_client.IndicatorManager'):
 
             return KlineClient(config=mock_config)
 

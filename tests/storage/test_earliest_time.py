@@ -4,7 +4,7 @@ import pytest
 from datetime import datetime
 from unittest.mock import Mock, patch, MagicMock
 from kline_data.storage.downloader import DataDownloader
-from kline_data.sdk.client import KlineClient
+from kline_data.sdk.sdk_client import KlineClient
 from kline_data.config import Config
 
 

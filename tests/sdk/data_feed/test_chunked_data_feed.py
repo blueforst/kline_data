@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 
-from kline_data.sdk.data_feed import ChunkedDataFeed
+from kline_data.sdk.query.data_feed import ChunkedDataFeed
 from kline_data.utils.constants import Timeframe
 
 
