@@ -58,22 +58,53 @@ class MetadataClient:
         metadata = self.metadata_mgr.get_symbol_metadata(exchange, symbol)
 
         if metadata:
+            intervals = {}
+            for interval, data in metadata.intervals.items():
+                interval_records = sum(
+                    p.records for p in metadata.partitions
+                    if p.interval == interval
+                )
+                interval_size = sum(
+                    p.size_bytes for p in metadata.partitions
+                    if p.interval == interval
+                )
+
+                intervals[interval] = {
+                    'start_time': datetime.fromtimestamp(
+                        data.start_timestamp / 1000
+                    ),
+                    'end_time': datetime.fromtimestamp(
+                        data.end_timestamp / 1000
+                    ),
+                    'records': interval_records,
+                    'size_bytes': interval_size,
+                    'completeness': data.completeness,
+                }
+
+            start_time = None
+            end_time = None
+            if metadata.data_range:
+                start_time = datetime.fromtimestamp(
+                    metadata.data_range.start_timestamp / 1000
+                )
+                end_time = datetime.fromtimestamp(
+                    metadata.data_range.end_timestamp / 1000
+                )
+
             return {
                 'exchange': metadata.exchange,
                 'symbol': metadata.symbol,
-                'intervals': {
-                    interval: {
-                        'start_time': datetime.fromtimestamp(
-                            data.start_timestamp / 1000
-                        ),
-                        'end_time': datetime.fromtimestamp(
-                            data.end_timestamp / 1000
-                        ),
-                        'records': data.total_records,
-                        'completeness': data.completeness,
-                    }
-                    for interval, data in metadata.intervals.items()
-                },
+                'start_time': start_time,
+                'end_time': end_time,
+                'intervals': intervals,
+                'total_records': (
+                    metadata.statistics.total_records
+                    if metadata.statistics else None
+                ),
+                'total_size_bytes': (
+                    metadata.statistics.total_size_bytes
+                    if metadata.statistics else None
+                ),
                 'last_updated': metadata.last_updated,
                 'data_type': API_METADATA_TAG,
             }

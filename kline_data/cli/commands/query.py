@@ -138,11 +138,16 @@ def query_range(
             # 使用统一的时区转换函数
             start_time_str = format_time_for_display(metadata.get('start_time'))
             end_time_str = format_time_for_display(metadata.get('end_time'))
+            total_records = metadata.get('total_records', metadata.get('count', 0))
+            duration = None
+            if metadata.get('start_time') and metadata.get('end_time'):
+                duration = metadata.get('end_time') - metadata.get('start_time')
             
             console.print(f"起始时间: [bold]{start_time_str}[/bold]")
             console.print(f"结束时间: [bold]{end_time_str}[/bold]")
-            console.print(f"数据量: [bold]{metadata.get('count', 0):,}[/bold] 条")
-            console.print(f"时间跨度: [bold]{metadata.get('duration')}[/bold]")
+            console.print(f"数据量: [bold]{total_records:,}[/bold] 条")
+            if duration:
+                console.print(f"时间跨度: [bold]{duration}[/bold]")
             
     except Exception as e:
         console.print(f"[red]✗ 错误:[/red] {e}")
@@ -176,11 +181,12 @@ def list_symbols(
                 
                 # 使用统一的时区转换函数
                 end_time_str = format_time_for_display(info.get("end_time"))
+                total_records = info.get("total_records", info.get("count", 0))
                 
                 table.add_row(
                     symbol,
                     info.get("exchange", "N/A"),
-                    f"{info.get('count', 0):,}",
+                    f"{total_records:,}",
                     end_time_str,
                 )
             

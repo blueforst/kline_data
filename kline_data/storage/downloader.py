@@ -529,10 +529,10 @@ class DataDownloader:
             self.exchange_name,
             self.symbol
         )
-        
-        # 只统计当前 interval 的分区
-        total_records = sum(p.records for p in metadata.partitions if p.interval == self.interval)
-        total_size = sum(p.size_bytes for p in metadata.partitions if p.interval == self.interval)
+
+        # 按全部分区聚合，避免多个周期下载时覆盖统计
+        total_records = sum(p.records for p in metadata.partitions)
+        total_size = sum(p.size_bytes for p in metadata.partitions)
         
         # 使用空列表和默认质量指标，避免混淆单批次与全局统计
         # 完整性检查应该在整个下载任务完成后单独进行

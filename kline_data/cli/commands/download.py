@@ -197,10 +197,11 @@ def list_downloads(
                     continue
                 
                 # 使用统一的时区转换函数
+                total_records = info.get("total_records", info.get("count", 0))
                 table.add_row(
                     symbol,
                     info.get("exchange", "N/A"),
-                    f"{info.get('count', 0):,}",
+                    f"{total_records:,}",
                     format_time_for_display(info.get("start_time")),
                     format_time_for_display(info.get("end_time")),
                     format_time_for_display(info.get("last_update")),
@@ -239,15 +240,39 @@ def check_status(
             table.add_column("值", style="green")
             
             # 使用统一的时区转换函数
+            total_records = metadata.get("total_records", metadata.get("count", 0))
+            total_size = metadata.get("total_size_bytes", metadata.get("file_size"))
+
             table.add_row("交易所", metadata.get("exchange", "N/A"))
-            table.add_row("数据量", f"{metadata.get('count', 0):,} 条")
+            table.add_row("数据量", f"{total_records:,} 条")
             table.add_row("起始时间", format_time_for_display(metadata.get("start_time")))
             table.add_row("结束时间", format_time_for_display(metadata.get("end_time")))
             table.add_row("最后更新", format_time_for_display(metadata.get("last_update")))
-            table.add_row("文件大小", metadata.get("file_size", "N/A"))
-            table.add_row("完整性", metadata.get("integrity", "N/A"))
+            if total_size is not None:
+                table.add_row("总大小", f"{total_size} bytes")
             
             console.print(table)
+
+            # 展示各周期覆盖情况
+            intervals = metadata.get("intervals", {})
+            if intervals:
+                interval_table = Table(title="周期覆盖情况")
+                interval_table.add_column("周期", style="cyan")
+                interval_table.add_column("记录数", justify="right")
+                interval_table.add_column("大小(bytes)", justify="right")
+                interval_table.add_column("完整性", justify="right")
+                interval_table.add_column("范围", style="green")
+
+                for iv, info in intervals.items():
+                    interval_table.add_row(
+                        iv,
+                        f"{info.get('records', 0):,}",
+                        f"{info.get('size_bytes', 0):,}",
+                        f"{info.get('completeness', 0):.2f}",
+                        f"{format_time_for_display(info.get('start_time'))} - {format_time_for_display(info.get('end_time'))}",
+                    )
+
+                console.print(interval_table)
             
     except Exception as e:
         console.print(f"[red]✗ 错误:[/red] {e}")
