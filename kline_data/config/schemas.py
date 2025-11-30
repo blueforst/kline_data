@@ -216,33 +216,6 @@ class MemoryConfig(BaseModel):
         return self.cache.max_size_mb
 
 
-class AggregationConfig(BaseModel):
-    """聚合方法配置"""
-    open: str = "first"
-    high: str = "max"
-    low: str = "min"
-    close: str = "last"
-    volume: str = "sum"
-
-
-class ResamplingConfig(BaseModel):
-    """重采样配置"""
-    supported_intervals: List[str] = [
-        "1s", "5s", "15s", "30s",
-        "1m", "5m", "15m", "30m",
-        "1h", "4h", "1d"
-    ]
-    precompute_intervals: List[str] = ["1m", "5m", "1h"]
-    aggregation: AggregationConfig = Field(default_factory=AggregationConfig)
-    
-    @field_validator('supported_intervals')
-    @classmethod
-    def validate_intervals(cls, v: List[str]) -> List[str]:
-        if not v:
-            raise ValueError("At least one interval must be supported")
-        return v
-
-
 class IndicatorDefaultsConfig(BaseModel):
     """指标默认参数配置"""
     ma_periods: List[int] = [5, 10, 20, 50, 200]
@@ -338,7 +311,6 @@ class Config(BaseModel):
     storage: StorageConfig = Field(default_factory=StorageConfig)
     ccxt: CCXTConfig = Field(default_factory=CCXTConfig)
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
-    resampling: ResamplingConfig = Field(default_factory=ResamplingConfig)
     indicators: IndicatorsConfig = Field(default_factory=IndicatorsConfig)
     api: APIConfig = Field(default_factory=APIConfig)
     cli: CLIConfig = Field(default_factory=CLIConfig)

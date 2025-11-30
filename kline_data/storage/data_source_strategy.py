@@ -1,7 +1,7 @@
 """数据源选择策略"""
 
 from typing import Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime
 from dataclasses import dataclass
 
 from ..config import Config
@@ -15,8 +15,8 @@ console = Console()
 @dataclass
 class DataSourceDecision:
     """数据源决策结果"""
-    source: str  # 'local', 'ccxt', 'resample', 'hybrid'
-    source_interval: Optional[str]  # 如果需要重采样，源数据周期
+    source: str  # 'local' 或 'ccxt'
+    source_interval: Optional[str]  # 兼容字段，始终为None（保留供未来扩展）
     need_download: bool  # 是否需要下载
     download_interval: Optional[str]  # 下载时使用的周期
     reason: str  # 决策理由
@@ -27,16 +27,6 @@ class DataSourceStrategy:
     数据源选择策略
     智能决策数据应该从哪里获取
     """
-    
-    # 交易所支持的原生周期（大多数交易所支持）
-    COMMON_NATIVE_TIMEFRAMES = [
-        '1m', '3m', '5m', '15m', '30m',
-        '1h', '2h', '4h', '6h', '8h', '12h',
-        '1d', '3d', '1w', '1M'
-    ]
-    
-    # 重采样阈值：如果需要的数据量小于此值，使用重采样；否则直接下载
-    RESAMPLE_THRESHOLD_RECORDS = 10000  # 1万条记录
     
     def __init__(self, config: Config):
         """
@@ -144,157 +134,6 @@ class DataSourceStrategy:
         except Exception as e:
             console.print(f"Error checking local data: {e}")
             return False
-    
-    def _check_resample_possibility(
-        self,
-        exchange: str,
-        symbol: str,
-        start_time: datetime,
-        end_time: datetime,
-        target_interval: str
-    ) -> Tuple[bool, Optional[str]]:
-        """
-        检查是否可以从本地数据重采样
-        
-        Args:
-            exchange: 交易所
-            symbol: 交易对
-            start_time: 开始时间
-            end_time: 结束时间
-            target_interval: 目标周期
-            
-        Returns:
-            Tuple[bool, Optional[str]]: (是否可以, 源周期)
-        """
-        from kline_data.resampler.timeframe import (
-            can_resample,
-            get_timeframe_seconds,
-            TIMEFRAME_SECONDS
-        )
-        
-        try:
-            metadata = self.metadata_mgr.get_symbol_metadata(exchange, symbol)
-            
-            if not metadata or not metadata.intervals:
-                return False, None
-            
-            target_seconds = get_timeframe_seconds(target_interval)
-            
-            # 找到所有可以重采样的源周期（从大到小）
-            candidates = []
-            
-            for interval, interval_data in metadata.intervals.items():
-                try:
-                    interval_seconds = get_timeframe_seconds(interval)
-                    
-                    # 必须小于目标周期，且可以重采样
-                    if (interval_seconds < target_seconds and 
-                        can_resample(interval, target_interval)):
-                        
-                        # 检查时间范围（UTC）
-                        data_start = timestamp_to_datetime(
-                            interval_data.start_timestamp
-                        )
-                        data_end = timestamp_to_datetime(
-                            interval_data.end_timestamp
-                        )
-                        
-                        # 确保所有时间都是UTC aware
-                        start_time_utc = to_utc(start_time)
-                        end_time_utc = to_utc(end_time)
-                        
-                        if data_start <= start_time_utc and data_end >= end_time_utc:
-                            candidates.append((interval, interval_seconds))
-                
-                except:
-                    continue
-            
-            # 选择最大的可用周期（减少数据量）
-            if candidates:
-                best_interval = max(candidates, key=lambda x: x[1])[0]
-                return True, best_interval
-            
-            return False, None
-            
-        except Exception as e:
-            console.print(f"Error checking resample possibility: {e}")
-            return False, None
-    
-    def _is_native_timeframe(self, interval: str) -> bool:
-        """
-        检查是否为交易所原生支持的周期
-        
-        Args:
-            interval: 周期
-            
-        Returns:
-            bool: 是否原生支持
-        """
-        return interval in self.COMMON_NATIVE_TIMEFRAMES
-    
-    def _find_best_download_interval(
-        self,
-        target_interval: str
-    ) -> Optional[str]:
-        """
-        找到最适合下载的周期
-        
-        Args:
-            target_interval: 目标周期
-            
-        Returns:
-            Optional[str]: 最佳下载周期
-        """
-        from kline_data.resampler.timeframe import (
-            can_resample,
-            get_timeframe_seconds,
-        )
-        
-        target_seconds = get_timeframe_seconds(target_interval)
-        
-        # 在原生支持的周期中找到最接近的、小于目标的周期
-        candidates = []
-        
-        for interval in self.COMMON_NATIVE_TIMEFRAMES:
-            try:
-                interval_seconds = get_timeframe_seconds(interval)
-                
-                if (interval_seconds < target_seconds and
-                    can_resample(interval, target_interval)):
-                    candidates.append((interval, interval_seconds))
-            except:
-                continue
-        
-        # 返回最大的候选周期
-        if candidates:
-            return max(candidates, key=lambda x: x[1])[0]
-        
-        return None
-    
-    def _estimate_records(
-        self,
-        start_time: datetime,
-        end_time: datetime,
-        interval: str
-    ) -> int:
-        """
-        估算记录数量
-        
-        Args:
-            start_time: 开始时间
-            end_time: 结束时间
-            interval: 周期
-            
-        Returns:
-            int: 估算的记录数
-        """
-        from kline_data.resampler.timeframe import get_timeframe_seconds
-
-        
-        duration_seconds = (end_time - start_time).total_seconds()
-        interval_seconds = get_timeframe_seconds(interval)
-        
-        return int(duration_seconds / interval_seconds)
     
     def explain_decision(
         self,

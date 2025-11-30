@@ -3,13 +3,13 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-一个高性能、可扩展的本地K线数据存储系统，支持从CCXT获取1秒级K线数据并持久化到本地，提供多周期重采样和技术指标计算功能。
+一个高性能、可扩展的本地K线数据存储系统，支持从CCXT获取1秒级及以上K线数据并持久化到本地，提供多周期查询和技术指标计算功能。
 
 ## ✨ 主要特性
 
 - 🚀 **高性能存储**: 基于Apache Parquet列式存储，支持高压缩率和快速查询
 - 📊 **多数据源**: 支持CCXT所有交易所（Binance、OKX、Bybit等）
-- ⏱️ **多周期支持**: 原始1秒数据可重采样为任意周期（1m、5m、1h、1d等）
+- ⏱️ **多周期支持**: 直接从CCXT获取任意周期（1m、5m、1h、1d等），无需本地重采样
 - 📈 **技术指标**: 内置MA、EMA、BOLL、RSI、MACD等常用指标，支持自定义扩展
 - 🔄 **断点续传**: 支持数据下载中断后继续
 - ⚡ **智能下载**: 自动检测已有数据，跳过重叠部分，只下载缺失段（[详见文档](docs/overlap_download_optimization.md)）
@@ -172,14 +172,13 @@ df = client.get_klines_before(
     with_indicators=['MA_20', 'RSI_14']
 )
 
-# 数据重采样
-df = client.resample(
+# 直接获取任意周期（无需重采样）
+df = client.get_kline(
     exchange='binance',
     symbol='BTC/USDT',
     start_time=datetime(2024, 1, 1),
     end_time=datetime(2024, 1, 31),
-    source_interval='1s',
-    target_interval='1h'
+    interval='1h'
 )
 ```
 
@@ -345,15 +344,13 @@ kline_data/
 │   └── schemas.py       # 配置数据模型
 ├── storage/             # 存储层
 ├── reader/              # 读取层
-├── resampler/           # 重采样层
 ├── indicators/          # 指标层
 ├── sdk/                 # SDK层
 ├── service/             # 服务层 (FastAPI)
 ├── cli/                 # CLI层
 ├── tests/               # 测试
 ├── data/                # 数据目录
-│   ├── raw/             # 原始1s数据
-│   ├── resampled/       # 重采样数据
+│   ├── raw/             # 原始数据
 │   └── metadata/        # 元数据
 └── logs/                # 日志
 ```
@@ -376,7 +373,7 @@ pytest --cov=. --cov-report=html
 - [x] 配置层实现
 - [x] 存储层实现（支持智能数据获取策略）
 - [x] 读取层实现
-- [x] 重采样层实现
+- [x] 多周期查询实现（全部由CCXT提供）
 - [x] 指标层实现（支持常用技术指标和自定义扩展）
 - [x] SDK层实现
 - [x] API服务层实现
@@ -391,21 +388,21 @@ pytest --cov=. --cov-report=html
 
 系统采用智能数据获取策略，自动选择最优方案：
 
-1. **小范围数据**：本地有1s数据时，通过重采样生成目标周期
-2. **大范围数据**：数据范围较大时，直接从CCXT获取目标周期数据
-3. **自动判断**：系统根据数据范围大小自动选择最优策略
+1. **本地数据完整**：直接读取现有Parquet文件
+2. **本地数据缺失**：直接从CCXT下载目标周期并落盘
+3. **自动判断**：系统根据数据范围自动选择最优策略并补齐缺失部分
 
 ```python
 # 自动选择策略示例
 client = KlineDataClient()
 
-# 小范围：使用重采样（快速）
+# 小范围：优先读取本地数据
 df = client.query('binance', 'BTC/USDT')\
     .time_range(datetime(2024, 1, 1), datetime(2024, 1, 2))\
     .interval('1h')\
     .execute()
 
-# 大范围：直接获取（节省存储）
+# 大范围：自动从交易所下载
 df = client.query('binance', 'BTC/USDT')\
     .time_range(datetime(2020, 1, 1), datetime(2024, 1, 1))\
     .interval('1w')\

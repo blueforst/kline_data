@@ -66,9 +66,7 @@ class QueryClient:
         
         智能策略优先级（auto_strategy=True时）：
         1. 本地有完整数据 -> 直接读取本地（最快）
-        2. 交易所原生支持 -> 直接下载对应周期（推荐）
-        3. 交易所部分支持 -> 下载最接近的小周期后重采样
-        4. 回退策略 -> 从本地更小周期重采样（仅当交易所无法获取时）
+        2. 否则直接从交易所下载目标周期（所有周期均由CCXT提供）
         
         Args:
             exchange: 交易所
@@ -77,7 +75,7 @@ class QueryClient:
             end_time: 结束时间
             interval: 时间周期（如 '1m', '5m', '1h', '1d', '1w'）
             auto_strategy: 是否自动选择策略（默认True）
-            force_strategy: 强制使用策略 ('local', 'ccxt', 'resample')
+            force_strategy: 强制使用策略 ('local', 'ccxt')
 
         Returns:
             pd.DataFrame: K线数据

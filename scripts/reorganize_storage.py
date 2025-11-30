@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+Legacy helper用于一次性迁移旧的重采样数据，将其合并回原始目录。
+
 Reorganize storage structure to merge resampled data into raw directory by period.
 
 New Structure:

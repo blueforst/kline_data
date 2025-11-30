@@ -10,9 +10,7 @@ def example_weekly_data():
     
     系统会自动选择最优策略：
     1. 如果本地有周线数据 -> 直接读取
-    2. 如果交易所支持周线 -> 直接从交易所下载
-    3. 如果本地有更小周期的数据 -> 重采样
-    4. 否则 -> 下载1s数据后重采样
+    2. 否则 -> 直接从交易所下载目标周期
     """
     client = KlineClient()
     
@@ -96,19 +94,19 @@ def example_strategy_comparison():
     )
     print(f"获取到 {len(df2)} 条数据")
     
-    # 策略3: 强制从本地重采样
-    print("\n[策略3] 强制从本地重采样")
+    # 策略3: 强制从本地读取
+    print("\n[策略3] 强制从本地读取")
     try:
         df3 = client.get_kline(
             'binance', 'BTC/USDT',
             start_time, end_time,
             interval='1h',
-            force_strategy='resample'
+            force_strategy='local'
         )
         print(f"获取到 {len(df3)} 条数据")
     except Exception as e:
-        print(f"重采样失败: {e}")
-        print("（可能是因为本地没有更小周期的数据）")
+        print(f"本地读取失败: {e}")
+        print("（通常因为本地没有完整的数据范围）")
 
 
 def example_data_range_handling():
@@ -142,9 +140,8 @@ def example_data_range_handling():
     
     # 系统决策：
     # 1. 检查本地是否有5分钟数据 -> 没有或不完整
-    # 2. 检查本地是否有更小周期的数据可以重采样 -> 没有或范围不对
-    # 3. 检查交易所是否支持5分钟数据 -> 支持
-    # 4. 决定：直接从交易所下载5分钟数据
+    # 2. 自动转向CCXT，检查交易所是否支持5分钟数据 -> 支持
+    # 3. 决定：直接从交易所下载5分钟数据
     
     print("\n系统会自动从交易所下载缺失的数据")
 
@@ -211,28 +208,19 @@ def example_batch_download():
     start_time = datetime(2024, 1, 1)
     end_time = datetime(2024, 1, 31)
     
-    # 先下载1分钟数据
-    print("\n1. 下载1分钟数据...")
-    task_id = client.download(
-        'binance', 'BTC/USDT',
-        start_time, end_time,
-        interval='1m'
-    )
-    print(f"任务ID: {task_id}")
+    # 直接下载多个周期
+    print("\n下载各个周期的数据...")
+    intervals = ['1m', '5m', '15m', '30m', '1h', '4h', '1d']
+    for interval in intervals:
+        result = client.download(
+            'binance', 'BTC/USDT',
+            start_time, end_time,
+            interval=interval
+        )
+        status = result.get('status') if isinstance(result, dict) else result
+        print(f"  {interval}: 任务状态 {status}")
     
-    # 然后批量重采样到多个周期
-    print("\n2. 批量重采样到多个周期...")
-    results = client.batch_resample(
-        'binance', 'BTC/USDT',
-        start_time, end_time,
-        source_interval='1m',
-        target_intervals=['5m', '15m', '30m', '1h', '4h', '1d'],
-        save=True
-    )
-    
-    print("\n重采样结果:")
-    for interval, df in results.items():
-        print(f"  {interval}: {len(df)} 条")
+    print("\n提示：所有周期都可直接从CCXT获取，无需本地重采样")
 
 
 def main():
@@ -245,11 +233,10 @@ def main():
     # 这里只是展示系统的工作原理
     
     print("\n系统特点：")
-    print("1. 自动选择最优数据源（本地/交易所/重采样）")
-    print("2. 对于大周期数据（如周线），直接从交易所获取")
-    print("3. 对于小周期数据，优先使用本地重采样")
-    print("4. 自动下载缺失的数据")
-    print("5. 支持强制指定策略")
+    print("1. 自动在本地与交易所之间选择最优数据源")
+    print("2. 所有周期都可以直接从CCXT下载，无需重采样")
+    print("3. 自动下载缺失的数据并更新本地缓存")
+    print("4. 支持强制指定策略（local / ccxt）")
     
     print("\n运行示例...")
     

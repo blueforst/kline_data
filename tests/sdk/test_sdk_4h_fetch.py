@@ -175,26 +175,8 @@ def test_get_4h_kline():
             console.print(f"  结果: 失败 - {e}")
         console.print()
         
-        # 策略B: 强制从本地重采样
-        console.print("[cyan]策略B: 强制从本地重采样（force_strategy='resample'）[/cyan]")
-        try:
-            df_resample = client.get_kline(
-                exchange=DEFAULT_EXCHANGE,
-                symbol=DEFAULT_SYMBOL,
-                start_time=start_time,
-                end_time=end_time,
-                interval=interval,
-                force_strategy='resample'
-            )
-            console.print(f"  结果: 获取到 {len(df_resample)} 条数据")
-            console.print(f"  [green]✓ 成功从本地更小周期数据重采样[/green]")
-        except Exception as e:
-            console.print(f"  结果: 失败 - {e}")
-            console.print(f"  [yellow]提示: 可能本地没有更小周期的数据（如1s/1m）[/yellow]")
-        console.print()
-        
-        # 策略C: 强制从交易所下载
-        console.print("[cyan]策略C: 强制从交易所下载（force_strategy='ccxt'）[/cyan]")
+        # 策略B: 强制从交易所下载
+        console.print("[cyan]策略B: 强制从交易所下载（force_strategy='ccxt'）[/cyan]")
         console.print("  [yellow]跳过此测试（避免重复下载）[/yellow]")
         console.print()
         

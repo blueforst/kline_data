@@ -160,9 +160,13 @@ with KlineClient() as client:
     )
     print(f"获取到 {len(df)} 条数据")
     
-    # 重采样为1小时
-    df_1h = client.resample(df, '1h')
-    print(f"重采样后 {len(df_1h)} 条数据")
+    # 直接获取1小时数据（无需重采样）
+    df_1h = client.get_kline(
+        symbol='BTC/USDT',
+        timeframe='1h',
+        limit=100
+    )
+    print(f"获取到 {len(df_1h)} 条 1 小时数据")
     
     # 添加技术指标
     df = client.add_indicators(df, ['sma_20', 'ema_50', 'macd'])

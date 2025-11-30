@@ -166,68 +166,6 @@ class DataFetcher:
         else:
             raise ValueError(f"Unknown source: {decision.source}")
     
-    def fetch_with_fallback(
-        self,
-        exchange: str,
-        symbol: str,
-        start_time: datetime,
-        end_time: datetime,
-        interval: str,
-        fallback_intervals: Optional[list] = None
-    ) -> pd.DataFrame:
-        """
-        带降级策略的获取
-        如果目标周期无法获取，尝试降级到其他周期
-        
-        Args:
-            exchange: 交易所
-            symbol: 交易对
-            start_time: 开始时间
-            end_time: 结束时间
-            interval: 目标周期
-            fallback_intervals: 降级周期列表
-            
-        Returns:
-            pd.DataFrame: 数据
-        """
-        # 首先尝试目标周期
-        try:
-            df = self.fetch(
-                exchange, symbol, start_time, end_time, interval,
-                verbose=False
-            )
-            if not df.empty:
-                return df
-        except Exception as e:
-            console.print(f"Failed to fetch {interval} data: {e}")
-        
-        # 尝试降级周期
-        if fallback_intervals:
-            for fallback_interval in fallback_intervals:
-                try:
-                    console.print(f"Trying fallback interval: {fallback_interval}")
-                    df = self.fetch(
-                        exchange, symbol, start_time, end_time,
-                        fallback_interval, verbose=False
-                    )
-                    if not df.empty:
-                        # 如果降级周期更小，重采样到目标周期
-                        from kline_data.resampler.timeframe import get_timeframe_seconds
-
-                        if (get_timeframe_seconds(fallback_interval) <
-                            get_timeframe_seconds(interval)):
-                            return self.resampler.resample(
-                                df, fallback_interval, interval
-                            )
-                        return df
-                except Exception as e:
-                    console.print(f"Failed to fetch {fallback_interval} data: {e}")
-                    continue
-        
-        # 全部失败，返回空DataFrame
-        console.print(f"All fetch attempts failed")
-        return pd.DataFrame()
-    
     def explain_strategy(
         self,
         exchange: str,

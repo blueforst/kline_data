@@ -17,6 +17,7 @@ from ..utils.constants import (
     DEFAULT_DOWNLOAD_INTERVAL,
     DEFAULT_QUERY_LIMIT,
 )
+from ..utils.timezone import now_utc
 
 
 class KlineClient:
@@ -81,7 +82,7 @@ class KlineClient:
         
         # 初始化各个子客户端
         self.query = QueryClient(config)
-        self.download = DownloadClient(config)
+        self.download_client = DownloadClient(config)
         self.indicator = IndicatorClient(config)
         self.metadata = MetadataClient(config)
     
@@ -99,12 +100,14 @@ class KlineClient:
         self,
         exchange: str,
         symbol: str,
-        start_time: datetime,
-        end_time: datetime,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
         interval: str = DEFAULT_QUERY_INTERVAL,
+        timeframe: Optional[str] = None,
         auto_strategy: bool = True,
         force_strategy: Optional[str] = None,
-        with_indicators: Optional[List[str]] = None
+        with_indicators: Optional[List[str]] = None,
+        limit: Optional[int] = None
     ) -> pd.DataFrame:
         """
         获取K线数据（智能模式，支持自动下载）
@@ -115,17 +118,34 @@ class KlineClient:
             start_time: 开始时间
             end_time: 结束时间
             interval: 时间周期
+            timeframe: 时间周期别名（与interval等效）
             auto_strategy: 是否自动选择策略（包括自动下载）
             force_strategy: 强制使用策略 ('local', 'ccxt')
             with_indicators: 附加计算的指标列表
+            limit: 返回的最大数量（可选）
 
         Returns:
             pd.DataFrame: K线数据
         """
-        df = self.query.get_kline(
-            exchange, symbol, start_time, end_time, interval,
-            auto_strategy, force_strategy
-        )
+        # timeframe 作为 interval 的别名，便于CLI使用
+        if timeframe is not None:
+            interval = timeframe
+
+        # 未提供结束时间时，默认到当前UTC时间
+        if end_time is None and start_time is not None:
+            end_time = now_utc().replace(tzinfo=None)
+
+        # 如果未提供开始时间，则返回最新数据
+        if start_time is None:
+            fetch_limit = limit if limit is not None else DEFAULT_QUERY_LIMIT
+            df = self.query.get_latest(exchange, symbol, interval, fetch_limit)
+        else:
+            df = self.query.get_kline(
+                exchange, symbol, start_time, end_time, interval,
+                auto_strategy, force_strategy
+            )
+            if limit is not None and len(df) > limit:
+                df = df.tail(limit)
         
         # 计算指标
         if with_indicators and not df.empty:
@@ -284,9 +304,36 @@ class KlineClient:
         Returns:
             dict: 下载结果摘要
         """
-        return self.download.download(
+        return self.download_client.download(
             exchange, symbol, start_time, end_time, interval,
             force, progress_callback, interrupt_handler
+        )
+
+    def download(
+        self,
+        exchange: str,
+        symbol: str,
+        start_time: datetime,
+        end_time: Optional[datetime] = None,
+        interval: str = DEFAULT_DOWNLOAD_INTERVAL,
+        force: bool = False,
+        progress_callback: Optional[Callable[[float, int, int], None]] = None,
+        interrupt_handler: Optional[Callable[[], None]] = None
+    ) -> dict:
+        """
+        下载数据（CLI/示例兼容包装）
+
+        直接转发到 download_kline，提供更直观的调用方式。
+        """
+        return self.download_kline(
+            exchange=exchange,
+            symbol=symbol,
+            start_time=start_time,
+            end_time=end_time,
+            interval=interval,
+            force=force,
+            progress_callback=progress_callback,
+            interrupt_handler=interrupt_handler,
         )
     
     def update_kline(
@@ -304,7 +351,20 @@ class KlineClient:
         Returns:
             Optional[dict]: 更新结果摘要
         """
-        return self.download.update(exchange, symbol)
+        return self.download_client.update(exchange, symbol)
+
+    def update(
+        self,
+        exchange: str,
+        symbol: str,
+        interval: Optional[str] = None
+    ) -> Optional[dict]:
+        """
+        更新数据到最新（CLI兼容包装）
+
+        interval 参数仅为兼容 CLI，实际由 DownloadManager 决定。
+        """
+        return self.update_kline(exchange, symbol)
     
     def get_earliest_available_time(
         self,
@@ -323,7 +383,7 @@ class KlineClient:
         Returns:
             Optional[datetime]: 最早可用时间
         """
-        return self.download.get_earliest_available_time(
+        return self.download_client.get_earliest_available_time(
             exchange, symbol, interval
         )
     
@@ -337,69 +397,7 @@ class KlineClient:
         Returns:
             Optional[dict]: 任务状态
         """
-        return self.download.get_task_status(task_id)
-    
-    # ==================== 重采样接口 ====================
-    
-    def resample_kline(
-        self,
-        exchange: str,
-        symbol: str,
-        start_time: datetime,
-        end_time: datetime,
-        source_interval: str,
-        target_interval: str,
-        save: bool = True
-    ) -> pd.DataFrame:
-        """
-        重采样数据
-        
-        Args:
-            exchange: 交易所
-            symbol: 交易对
-            start_time: 开始时间
-            end_time: 结束时间
-            source_interval: 源周期
-            target_interval: 目标周期
-            save: 是否保存结果
-            
-        Returns:
-            pd.DataFrame: 重采样后的数据
-        """
-        return self.resample.resample(
-            exchange, symbol, start_time, end_time,
-            source_interval, target_interval, save
-        )
-    
-    def batch_resample_kline(
-        self,
-        exchange: str,
-        symbol: str,
-        start_time: datetime,
-        end_time: datetime,
-        source_interval: str,
-        target_intervals: List[str],
-        save: bool = True
-    ) -> dict:
-        """
-        批量重采样
-        
-        Args:
-            exchange: 交易所
-            symbol: 交易对
-            start_time: 开始时间
-            end_time: 结束时间
-            source_interval: 源周期
-            target_intervals: 目标周期列表
-            save: 是否保存结果
-            
-        Returns:
-            dict: {interval: DataFrame}
-        """
-        return self.resample.batch_resample(
-            exchange, symbol, start_time, end_time,
-            source_interval, target_intervals, save
-        )
+        return self.download_client.get_task_status(task_id)
     
     # ==================== 指标计算接口 ====================
     
@@ -419,25 +417,94 @@ class KlineClient:
             pd.DataFrame: 带指标的数据
         """
         return self.indicator.calculate(df, indicators)
+
+    def add_indicators(
+        self,
+        df: pd.DataFrame,
+        indicators: List[str]
+    ) -> pd.DataFrame:
+        """
+        CLI/示例兼容的指标计算包装
+
+        Args:
+            df: K线数据
+            indicators: 指标列表
+
+        Returns:
+            pd.DataFrame: 带指标的数据
+        """
+        return self.calculate_indicators(df, indicators)
     
     # ==================== 元数据查询接口 ====================
     
-    def get_metadata(
+    def _format_metadata(
         self,
+        data: Optional[dict],
         exchange: str,
         symbol: str
+    ) -> Optional[dict]:
+        """
+        标准化元数据字段，补充CLI期望的键名。
+        """
+        if data is None:
+            return None
+
+        formatted = dict(data)
+        formatted.setdefault('exchange', exchange)
+
+        # 兼容不同字段命名
+        if 'last_updated' in formatted and 'last_update' not in formatted:
+            formatted['last_update'] = formatted['last_updated']
+        if 'total_records' in formatted and 'count' not in formatted:
+            formatted['count'] = formatted['total_records']
+
+        return formatted
+
+    def get_metadata(
+        self,
+        exchange: Optional[str] = None,
+        symbol: Optional[str] = None
     ) -> Optional[dict]:
         """
         获取元数据
 
         Args:
-            exchange: 交易所
-            symbol: 交易对
+            exchange: 交易所，可选
+            symbol: 交易对，可选
 
         Returns:
-            Optional[dict]: 元数据
+            Optional[dict]: 元数据；如果未指定符号则返回所有元数据的字典
         """
-        return self.metadata.get_metadata(exchange, symbol)
+        # 指定了符号必须同时提供交易所
+        if symbol and not exchange:
+            raise ValueError("exchange is required when symbol is specified")
+
+        # 返回指定交易对的元数据
+        if exchange and symbol:
+            return self._format_metadata(
+                self.metadata.get_metadata(exchange, symbol),
+                exchange,
+                symbol
+            )
+
+        # 聚合返回所有元数据（可按交易所过滤）
+        metadata_mgr = getattr(self.metadata, "metadata_mgr", None)
+        if metadata_mgr is None:
+            return {}
+
+        exchanges = [exchange] if exchange else metadata_mgr.list_exchanges()
+        result = {}
+        for exch in exchanges:
+            for sym in metadata_mgr.list_symbols(exch):
+                formatted = self._format_metadata(
+                    self.metadata.get_metadata(exch, sym),
+                    exch,
+                    sym
+                )
+                if formatted is not None:
+                    result[sym] = formatted
+
+        return result
     
     def list_symbols(self, exchange: Optional[str] = None) -> List[str]:
         """
@@ -449,4 +516,13 @@ class KlineClient:
         Returns:
             List[str]: 交易对列表
         """
+        metadata_mgr = getattr(self.metadata, "metadata_mgr", None)
+        if metadata_mgr:
+            if exchange:
+                return metadata_mgr.list_symbols(exchange)
+            symbols = []
+            for exch in metadata_mgr.list_exchanges():
+                symbols.extend(metadata_mgr.list_symbols(exch))
+            return sorted(set(symbols))
+
         return self.metadata.list_symbols(exchange)

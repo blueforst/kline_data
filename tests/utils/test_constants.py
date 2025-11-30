@@ -10,7 +10,6 @@ from kline_data.utils.constants import (
     DEFAULT_EXCHANGE,
     DEFAULT_SYMBOL,
     COMMON_INTERVALS,
-    PRECOMPUTE_INTERVALS,
     DEMO_INTERVALS,
     OHLCV_COLUMNS,
     CCXT_OHLCV_INDEX,
@@ -88,23 +87,6 @@ class TestTimeframeEnum:
         assert '1d' in all_timeframes
         assert len(all_timeframes) == 18  # 总共18个时间周期
     
-    def test_is_valid_resample_from(self):
-        """测试is_valid_resample_from方法"""
-        # 可以从小周期重采样到大周期
-        assert Timeframe.H1.is_valid_resample_from(Timeframe.M1) is True
-        assert Timeframe.D1.is_valid_resample_from(Timeframe.H1) is True
-        assert Timeframe.M5.is_valid_resample_from(Timeframe.M1) is True
-        
-        # 不能从大周期重采样到小周期
-        assert Timeframe.M1.is_valid_resample_from(Timeframe.H1) is False
-        assert Timeframe.H1.is_valid_resample_from(Timeframe.D1) is False
-        
-        # 周期相同时可以
-        assert Timeframe.M1.is_valid_resample_from(Timeframe.M1) is True
-        
-        # 不是整数倍时不可以
-        assert Timeframe.M5.is_valid_resample_from(Timeframe.M3) is False
-
 
 class TestTimeframeConstants:
     """测试时间周期常量"""
@@ -232,10 +214,6 @@ class TestAdditionalConstants:
         assert '1m' in COMMON_INTERVALS
         assert '1h' in COMMON_INTERVALS
         assert '1d' in COMMON_INTERVALS
-
-        # 测试预计算周期
-        assert isinstance(PRECOMPUTE_INTERVALS, list)
-        assert len(PRECOMPUTE_INTERVALS) <= len(COMMON_INTERVALS)
 
         # 测试演示周期
         assert isinstance(DEMO_INTERVALS, list)
@@ -390,37 +368,6 @@ class TestTimeframeEdgeCases:
             assert isinstance(tf.pandas_freq, str)
             assert len(tf.pandas_freq) > 0
 
-    def test_resample_validation_edge_cases(self):
-        """测试重采样验证边界情况"""
-        # 测试相同周期
-        for tf in Timeframe:
-            assert tf.is_valid_resample_from(tf) is True
-
-        # 测试从最小到最大周期
-        min_tf = min(Timeframe, key=lambda x: x.seconds)
-        max_tf = max(Timeframe, key=lambda x: x.seconds)
-        assert max_tf.is_valid_resample_from(min_tf) is True
-        assert min_tf.is_valid_resample_from(max_tf) is False
-
-
-class TestBackwardCompatibility:
-    """测试向后兼容性"""
-
-    def test_import_from_resampler(self):
-        """测试从resampler模块导入（向后兼容）"""
-        from kline_data.resampler.timeframe import Timeframe as OldTimeframe
-        from kline_data.resampler.timeframe import TIMEFRAME_SECONDS as OLD_SECONDS
-
-        # 应该是同一个对象
-        assert OldTimeframe.M1.value == '1m'
-        assert OLD_SECONDS['1m'] == 60
-
-    def test_import_from_top_level(self):
-        """测试从顶层模块导入"""
-        from kline_data import Timeframe as TopTimeframe
-
-        assert TopTimeframe.M1.value == '1m'
-        assert TopTimeframe.M1.seconds == 60
 
 
 if __name__ == '__main__':

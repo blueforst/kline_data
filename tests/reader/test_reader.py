@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from datetime import datetime, timedelta
 
-from kline_data.config import load_config
+from kline_data.config import Config
 from kline_data.storage import ParquetWriter
 from kline_data.reader import (
     LRUCache,
@@ -110,7 +110,7 @@ class TestParquetReader:
     def temp_config(self):
         """创建临时配置"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            config = load_config('config/config.yaml')
+            config = Config()
             config.storage.root_path = tmpdir
             config.memory.cache.enabled = True
             yield config
@@ -170,9 +170,15 @@ class TestParquetReader:
     
     def test_read_latest(self, temp_config, sample_data):
         """测试读取最新数据"""
-        reader = ParquetReader(temp_config)
+        from unittest.mock import patch
+        from datetime import timezone
         
-        df = reader.read_latest('binance', 'BTC/USDT', '1s', limit=10)
+        # Mock current time to be close to sample data
+        mock_now = datetime(2024, 1, 2, tzinfo=timezone.utc)
+        
+        with patch('kline_data.reader.parquet_reader.now_utc', return_value=mock_now):
+            reader = ParquetReader(temp_config)
+            df = reader.read_latest('binance', 'BTC/USDT', '1s', limit=10)
         
         assert not df.empty
         assert len(df) <= 10
@@ -194,7 +200,7 @@ class TestQueryEngine:
     def temp_config(self):
         """创建临时配置"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            config = load_config('config/config.yaml')
+            config = Config()
             config.storage.root_path = tmpdir
             yield config
     
@@ -271,7 +277,7 @@ class TestQueryBuilder:
     def temp_config(self):
         """创建临时配置"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            config = load_config('config/config.yaml')
+            config = Config()
             config.storage.root_path = tmpdir
             yield config
     

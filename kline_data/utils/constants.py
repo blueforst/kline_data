@@ -27,7 +27,7 @@ class Timeframe(str, Enum):
     该枚举定义了所有支持的K线时间周期，每个周期都包含：
     - value: 字符串表示（如 '1m', '1h', '1d'）
     - seconds: 该周期对应的秒数
-    - pandas_freq: Pandas重采样频率字符串
+    - pandas_freq: Pandas频率字符串
     
     使用示例:
         >>> Timeframe.M1.value  # '1m'
@@ -113,22 +113,6 @@ class Timeframe(str, Enum):
         """
         return [tf.value for tf in cls]
     
-    def is_valid_resample_from(self, source: 'Timeframe') -> bool:
-        """检查是否可以从source重采样到当前周期
-        
-        Args:
-            source: 源时间周期
-            
-        Returns:
-            bool: 是否可以重采样
-            
-        Examples:
-            >>> Timeframe.H1.is_valid_resample_from(Timeframe.M1)
-            True  # 可以从1分钟重采样到1小时
-            >>> Timeframe.M1.is_valid_resample_from(Timeframe.H1)
-            False  # 不能从1小时重采样到1分钟
-        """
-        return self.seconds >= source.seconds and self.seconds % source.seconds == 0
 
 
 # ============================================================================
@@ -226,9 +210,6 @@ DEFAULT_SOURCE_INTERVAL: Final[str] = '1s'
 
 # 常用周期列表（用于预计算或优化）
 COMMON_INTERVALS: Final[List[str]] = ['1m', '5m', '15m', '30m', '1h', '4h', '1d']
-
-# 预计算周期（这些周期会被提前计算并缓存）
-PRECOMPUTE_INTERVALS: Final[List[str]] = ['1m', '5m', '1h']
 
 # 常用时间周期默认值
 DEFAULT_QUERY_INTERVAL: Final[str] = '1d'  # 默认查询周期
@@ -505,7 +486,6 @@ __all__ = [
     'PANDAS_TO_TIMEFRAME',
     'DEFAULT_SOURCE_INTERVAL',
     'COMMON_INTERVALS',
-    'PRECOMPUTE_INTERVALS',
     'DEFAULT_QUERY_INTERVAL',
     'DEFAULT_DOWNLOAD_INTERVAL',
     'API_DEFAULT_INTERVAL',

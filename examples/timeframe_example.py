@@ -9,7 +9,6 @@ from kline_data.utils.constants import (
     Timeframe,
     TIMEFRAME_SECONDS,
     COMMON_INTERVALS,
-    PRECOMPUTE_INTERVALS,
     get_timeframe_seconds,
     validate_timeframe,
 )
@@ -56,39 +55,18 @@ def example_list_all():
     print()
 
 
-def example_resample_validation():
-    """重采样验证"""
-    print("=" * 60)
-    print("4. 重采样验证")
-    print("=" * 60)
-    
-    test_cases = [
-        (Timeframe.M1, Timeframe.M5),   # 1分钟 -> 5分钟
-        (Timeframe.M1, Timeframe.H1),   # 1分钟 -> 1小时
-        (Timeframe.H1, Timeframe.D1),   # 1小时 -> 1天
-        (Timeframe.H1, Timeframe.M1),   # 1小时 -> 1分钟 (不可行)
-        (Timeframe.M3, Timeframe.M5),   # 3分钟 -> 5分钟 (不可行，非整数倍)
-    ]
-    
-    for source, target in test_cases:
-        can_resample = target.is_valid_resample_from(source)
-        status = "✓ 可以" if can_resample else "✗ 不可以"
-        print(f"{status} 从 {source.value:4s} 重采样到 {target.value:4s}")
-    print()
-
 
 def example_constants_usage():
     """使用常量"""
     print("=" * 60)
-    print("5. 使用预定义常量")
+    print("4. 使用预定义常量")
     print("=" * 60)
     
     print("常用周期 (COMMON_INTERVALS):")
     print(f"  {', '.join(COMMON_INTERVALS)}")
     print()
     
-    print("预计算周期 (PRECOMPUTE_INTERVALS):")
-    print(f"  {', '.join(PRECOMPUTE_INTERVALS)}")
+    print("所有周期直接由CCXT提供，无需本地重采样")
     print()
     
     print("时间周期秒数映射 (部分):")
@@ -101,7 +79,7 @@ def example_constants_usage():
 def example_time_calculations():
     """时间计算示例"""
     print("=" * 60)
-    print("6. 时间计算")
+    print("5. 时间计算")
     print("=" * 60)
     
     # 计算100根K线的时间跨度
@@ -119,7 +97,7 @@ def example_time_calculations():
 def example_validation():
     """验证示例"""
     print("=" * 60)
-    print("7. 验证功能")
+    print("6. 验证功能")
     print("=" * 60)
     
     # 有效的时间周期
@@ -148,7 +126,7 @@ def example_validation():
 def example_practical_usage():
     """实际应用示例"""
     print("=" * 60)
-    print("8. 实际应用场景")
+    print("7. 实际应用场景")
     print("=" * 60)
     
     # 场景1: 批量处理多个周期
@@ -170,25 +148,19 @@ def example_practical_usage():
         print(f"  {interval:4s}: 约 {num_candles:6d} 根K线")
     print()
     
-    # 场景3: 选择最优重采样源
-    print("场景3: 为目标周期选择重采样源")
+    # 场景3: 规划直接下载任务
+    print("场景3: 规划直接下载任务（全部由CCXT提供）")
     target = Timeframe.H4  # 目标：4小时
-    possible_sources = [Timeframe.M1, Timeframe.M5, Timeframe.M15, Timeframe.H1]
-    
     print(f"  目标周期: {target.value} (4小时)")
-    print("  可用源周期:")
-    for source in possible_sources:
-        if target.is_valid_resample_from(source):
-            print(f"    ✓ {source.value:4s} 可以重采样")
-        else:
-            print(f"    ✗ {source.value:4s} 不可重采样")
+    print("  直接调用 KlineClient.get_kline(..., interval=target.value) 即可")
+    print("  系统会在本地数据缺失时自动从交易所下载该周期")
     print()
 
 
 def example_comparison():
     """新旧用法对比"""
     print("=" * 60)
-    print("9. 新旧用法对比")
+    print("8. 新旧用法对比")
     print("=" * 60)
     
     print("❌ 旧的用法（不推荐）:")
@@ -215,7 +187,6 @@ def main():
     example_basic_usage()
     example_from_string()
     example_list_all()
-    example_resample_validation()
     example_constants_usage()
     example_time_calculations()
     example_validation()

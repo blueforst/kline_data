@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 KLINE_DATA_DIR = PROJECT_ROOT / "kline_data"
 
 # 需要替换的模块名
-MODULES = ['config', 'storage', 'reader', 'resampler', 'indicators', 'sdk', 'service', 'utils', 'cli']
+MODULES = ['config', 'storage', 'reader', 'indicators', 'sdk', 'service', 'utils', 'cli']
 
 def get_relative_depth(filepath: Path) -> int:
     """计算文件相对于 kline_data 包的深度"""

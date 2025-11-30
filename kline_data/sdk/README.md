@@ -80,9 +80,8 @@ feed = client.create_streaming_feed(...)
 client.download_kline(...)
 client.update_kline(...)
 
-# 数据重采样
-client.resample_kline(...)
-client.batch_resample_kline(...)
+# 所有周期直接获取（无需重采样）
+client.get_kline(..., interval='4h')
 
 # 技术指标
 client.calculate_indicators(...)
@@ -145,35 +144,10 @@ result = download.update('binance', 'BTC/USDT')
 status = download.get_task_status(result['task_id'])
 ```
 
-#### ResampleClient - 数据重采样
+#### （已移除）ResampleClient
 
-```python
-from sdk import ResampleClient
-
-resample = ResampleClient()
-
-# 单个周期重采样
-df = resample.resample(
-    exchange='binance',
-    symbol='BTC/USDT',
-    start_time=datetime(2024, 1, 1),
-    end_time=datetime(2024, 1, 2),
-    source_interval='1m',
-    target_interval='1h',
-    save=True
-)
-
-# 批量重采样
-results = resample.batch_resample(
-    exchange='binance',
-    symbol='BTC/USDT',
-    start_time=datetime(2024, 1, 1),
-    end_time=datetime(2024, 1, 2),
-    source_interval='1m',
-    target_intervals=['5m', '15m', '1h', '4h'],
-    save=True
-)
-```
+> 本地重采样功能已经移除，所有时间周期都可以直接通过 `QueryClient` / `KlineClient` 从交易所下载。
+> 如需不同周期的数据，请直接调用 `get_kline(..., interval='目标周期')`。
 
 #### IndicatorClient - 技术指标
 
@@ -286,7 +260,7 @@ for bar in feed.stream():
 
 1. **本地优先**: 如果本地有完整数据，直接读取
 2. **自动下载**: 如果数据缺失，自动从交易所下载
-3. **智能重采样**: 如果交易所不支持该周期，自动从更小周期重采样
+3. **统一周期**: 所有周期均由CCXT提供，无需本地重采样
 
 ```python
 # 示例：查询不存在的数据
@@ -365,32 +339,20 @@ print(f"最终资产: {portfolio_value}")
 ### 示例3: 多周期分析
 
 ```python
-from sdk import KlineClient, ResampleClient
+from sdk import KlineClient
 from datetime import datetime
 
 client = KlineClient()
-resample = ResampleClient()
+intervals = ['1m', '5m', '15m', '1h', '4h']
 
-# 下载1分钟数据
-client.download_kline(
-    'binance', 'BTC/USDT',
-    datetime(2024, 1, 1),
-    datetime(2024, 1, 2),
-    '1m'
-)
-
-# 批量重采样到多个周期
-results = resample.batch_resample(
-    'binance', 'BTC/USDT',
-    datetime(2024, 1, 1),
-    datetime(2024, 1, 2),
-    source_interval='1m',
-    target_intervals=['5m', '15m', '1h', '4h'],
-    save=True
-)
-
-# 分析不同周期
-for interval, df in results.items():
+for interval in intervals:
+    df = client.get_kline(
+        exchange='binance',
+        symbol='BTC/USDT',
+        start_time=datetime(2024, 1, 1),
+        end_time=datetime(2024, 1, 2),
+        interval=interval
+    )
     print(f"{interval}: {len(df)} bars")
 ```
 

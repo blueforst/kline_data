@@ -101,17 +101,6 @@ def example_2_create_config():
                 'ttl_seconds': 3600
             }
         },
-        resampling={
-            'supported_intervals': ['1m', '5m', '15m', '30m', '1h', '4h', '1d'],
-            'precompute_intervals': ['1m', '5m', '1h'],
-            'aggregation': {
-                'open': 'first',
-                'high': 'max',
-                'low': 'min',
-                'close': 'last',
-                'volume': 'sum'
-            }
-        },
         indicators={
             'defaults': {
                 'ma_periods': [5, 10, 20, 50, 200],

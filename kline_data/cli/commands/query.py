@@ -10,7 +10,7 @@ from rich.table import Table
 import pandas as pd
 
 from ...sdk import KlineClient
-from ...resampler import Timeframe
+from ...utils.constants import Timeframe
 from ...utils.timezone import format_time_for_display, format_time_for_display, now_utc
 
 app = typer.Typer(help="数据查询命令")

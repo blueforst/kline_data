@@ -9,7 +9,6 @@ from kline_data.config.schemas import Config
 
 # 导入全局常量
 from kline_data.utils.constants import (
-    Timeframe,
     DEFAULT_EXCHANGE,
     DEFAULT_SYMBOL,
     SUPPORTED_EXCHANGES,
@@ -18,117 +17,106 @@ from kline_data.utils.constants import (
     DEFAULT_COMPRESSION,
     SUPPORTED_STORAGE_FORMATS,
     SUPPORTED_COMPRESSIONS,
-    COMMON_INTERVALS,
-    PRECOMPUTE_INTERVALS,
 )
+
+
+@pytest.fixture
+def temp_config_file():
+    """创建临时配置文件"""
+    config_data = {
+        'system': {
+            'version': '1.0.0',
+            'log_level': DEFAULT_LOG_LEVEL,
+            'log_path': './logs'
+        },
+        'storage': {
+            'root_path': './data',
+            'separate_by_exchange': True,
+            'separate_by_symbol': True,
+            'format': DEFAULT_STORAGE_FORMAT,
+            'compression': DEFAULT_COMPRESSION,
+            'partition': {
+                'enabled': True,
+                'granularity': 'month'
+            },
+            'retention': {
+                'enabled': False,
+                'days': 365
+            }
+        },
+        'ccxt': {
+            'proxy': {
+                'http': None,
+                'https': None
+            },
+            'rate_limit': {
+                'enabled': True,
+                'requests_per_minute': 1200
+            },
+            'retry': {
+                'max_attempts': 3,
+                'backoff_factor': 2,
+                'timeout': 30
+            },
+            'exchanges': [DEFAULT_EXCHANGE, 'okx']
+        },
+        'memory': {
+            'max_usage_mb': 4096,
+            'chunk_size': 100000,
+            'cache': {
+                'enabled': True,
+                'max_size_mb': 512,
+                'ttl_seconds': 3600
+            }
+        },
+        'indicators': {
+            'defaults': {
+                'ma_periods': [5, 10, 20],
+                'ema_periods': [12, 26],
+                'boll_period': 20,
+                'boll_std': 2.0,
+                'rsi_period': 14,
+                'macd': [12, 26, 9]
+            },
+            'batch_compute': True
+        },
+        'api': {
+            'host': '0.0.0.0',
+            'port': 8000,
+            'workers': 4,
+            'auth': {
+                'enabled': False,
+                'api_key': ''
+            },
+            'rate_limit': {
+                'enabled': True,
+                'requests_per_minute': 1000
+            },
+            'cors': {
+                'enabled': True,
+                'origins': ['*']
+            }
+        },
+        'cli': {
+            'default_exchange': DEFAULT_EXCHANGE,
+            'default_symbol': DEFAULT_SYMBOL,
+            'output_format': 'table'
+        }
+    }
+
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        yaml.safe_dump(config_data, f)
+        temp_path = f.name
+
+    try:
+        yield temp_path
+    finally:
+        Path(temp_path).unlink(missing_ok=True)
 
 
 class TestConfigManager:
     """测试ConfigManager类"""
     
-    @pytest.fixture
-    def temp_config_file(self):
-        """创建临时配置文件"""
-        config_data = {
-            'system': {
-                'version': '1.0.0',
-                'log_level': DEFAULT_LOG_LEVEL,
-                'log_path': './logs'
-            },
-            'storage': {
-                'root_path': './data',
-                'separate_by_exchange': True,
-                'separate_by_symbol': True,
-                'format': DEFAULT_STORAGE_FORMAT,
-                'compression': DEFAULT_COMPRESSION,
-                'partition': {
-                    'enabled': True,
-                    'granularity': 'month'
-                },
-                'retention': {
-                    'enabled': False,
-                    'days': 365
-                }
-            },
-            'ccxt': {
-                'proxy': {
-                    'http': None,
-                    'https': None
-                },
-                'rate_limit': {
-                    'enabled': True,
-                    'requests_per_minute': 1200
-                },
-                'retry': {
-                    'max_attempts': 3,
-                    'backoff_factor': 2,
-                    'timeout': 30
-                },
-                'exchanges': [DEFAULT_EXCHANGE, 'okx']
-            },
-            'memory': {
-                'max_usage_mb': 4096,
-                'chunk_size': 100000,
-                'cache': {
-                    'enabled': True,
-                    'max_size_mb': 512,
-                    'ttl_seconds': 3600
-                }
-            },
-            'resampling': {
-                'supported_intervals': ['1s', Timeframe.M1.value, Timeframe.H1.value],
-                'precompute_intervals': [Timeframe.M1.value],
-                'aggregation': {
-                    'open': 'first',
-                    'high': 'max',
-                    'low': 'min',
-                    'close': 'last',
-                    'volume': 'sum'
-                }
-            },
-            'indicators': {
-                'defaults': {
-                    'ma_periods': [5, 10, 20],
-                    'ema_periods': [12, 26],
-                    'boll_period': 20,
-                    'boll_std': 2.0,
-                    'rsi_period': 14,
-                    'macd': [12, 26, 9]
-                },
-                'batch_compute': True
-            },
-            'api': {
-                'host': '0.0.0.0',
-                'port': 8000,
-                'workers': 4,
-                'auth': {
-                    'enabled': False,
-                    'api_key': ''
-                },
-                'rate_limit': {
-                    'enabled': True,
-                    'requests_per_minute': 1000
-                },
-                'cors': {
-                    'enabled': True,
-                    'origins': ['*']
-                }
-            },
-            'cli': {
-                'default_exchange': DEFAULT_EXCHANGE,
-                'default_symbol': DEFAULT_SYMBOL,
-                'output_format': 'table'
-            }
-        }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            yaml.safe_dump(config_data, f)
-            temp_path = f.name
-        
-        yield temp_path
-        
-        # 清理
-        Path(temp_path).unlink()
     
     @pytest.fixture(autouse=True)
     def reset_manager(self):

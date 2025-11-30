@@ -18,6 +18,7 @@ from .models import (
     DownloadTask,
     TaskStatus,
 )
+from ..utils.constants import get_timeframe_seconds
 from ..utils.timezone import (
     now_utc,
     format_datetime,
@@ -175,7 +176,6 @@ class MetadataManager:
         Returns:
             IntervalData: 更新后的周期元数据
         """
-        from kline_data.resampler.timeframe import get_timeframe_seconds
         from rich.console import Console
         console = Console()
 

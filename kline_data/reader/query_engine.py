@@ -277,7 +277,7 @@ class QueryEngine:
         resample_to: Optional[str] = None
     ) -> pd.DataFrame:
         """
-        查询OHLC数据（可选重采样）
+        查询OHLC数据
         
         Args:
             exchange: 交易所
@@ -285,10 +285,13 @@ class QueryEngine:
             start_time: 开始时间
             end_time: 结束时间
             interval: 原始时间周期
-            resample_to: 重采样目标周期
+            resample_to: 兼容参数，重采样功能已移除
             
         Returns:
             pd.DataFrame: OHLC数据
+        
+        Raises:
+            ValueError: 当提供 resample_to 参数时
         """
         df = self.reader.read_range(
             exchange,
@@ -299,24 +302,15 @@ class QueryEngine:
             columns=['timestamp', 'open', 'high', 'low', 'close', 'volume']
         )
         
-        if df.empty or not resample_to:
+        if df.empty:
             return df
         
-        # 重采样
-        df = df.set_index('timestamp')
+        if resample_to:
+            raise ValueError(
+                "Local resampling has been removed. Request the desired interval directly from CCXT."
+            )
         
-        ohlc_dict = {
-            'open': 'first',
-            'high': 'max',
-            'low': 'min',
-            'close': 'last',
-            'volume': 'sum'
-        }
-        
-        resampled = df.resample(resample_to).agg(ohlc_dict)
-        resampled = resampled.dropna()
-        
-        return resampled.reset_index()
+        return df
     
     def query_price_changes(
         self,

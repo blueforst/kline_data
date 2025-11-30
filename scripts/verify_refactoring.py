@@ -24,7 +24,6 @@ def verify_imports():
         from kline_data.sdk import (
             QueryClient,
             DownloadClient,
-            ResampleClient,
             IndicatorClient,
             MetadataClient
         )
@@ -69,7 +68,6 @@ def verify_client_structure():
         # 检查子客户端
         assert hasattr(client, 'query'), "缺少query客户端"
         assert hasattr(client, 'download'), "缺少download客户端"
-        assert hasattr(client, 'resample'), "缺少resample客户端"
         assert hasattr(client, 'indicator'), "缺少indicator客户端"
         assert hasattr(client, 'metadata'), "缺少metadata客户端"
         print("✅ 统一客户端包含所有子客户端")
@@ -79,7 +77,6 @@ def verify_client_structure():
             'get_kline', 'get_latest', 'get_klines_before',
             'create_data_feed', 'create_backtrader_feed', 'create_streaming_feed',
             'download_kline', 'update_kline',
-            'resample_kline', 'batch_resample_kline',
             'calculate_indicators',
             'get_metadata'
         ]
@@ -107,7 +104,6 @@ def verify_sub_clients():
         from kline_data.sdk import (
             QueryClient,
             DownloadClient,
-            ResampleClient,
             IndicatorClient,
             MetadataClient
         )
@@ -115,13 +111,11 @@ def verify_sub_clients():
         # 创建各个客户端
         query = QueryClient()
         download = DownloadClient()
-        resample = ResampleClient()
         indicator = IndicatorClient()
         metadata = MetadataClient()
         
         print("✅ QueryClient可独立创建")
         print("✅ DownloadClient可独立创建")
-        print("✅ ResampleClient可独立创建")
         print("✅ IndicatorClient可独立创建")
         print("✅ MetadataClient可独立创建")
         

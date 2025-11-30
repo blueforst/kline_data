@@ -17,8 +17,8 @@ import numpy as np
 import tempfile
 from pathlib import Path
 
-from kline_data.sdk.client import KlineClient
-from kline_data.sdk.data_feed import ChunkedDataFeed
+from kline_data.sdk import KlineClient
+from kline_data.sdk import ChunkedDataFeed
 from kline_data.storage.data_source_strategy import DataSourceStrategy
 from kline_data.storage.models import KlineData
 from kline_data.config.manager import ConfigManager
@@ -70,8 +70,7 @@ class TestSystemWorkflowIntegration:
         with patch('sdk.client.DataFetcher', return_value=mock_data_fetcher), \
              patch('sdk.client.MetadataManager', return_value=mock_metadata_manager), \
              patch('sdk.client.ParquetReader', return_value=mock_parquet_reader), \
-             patch('sdk.client.DownloadManager', return_value=mock_download_manager), \
-             patch('sdk.client.KlineResampler'):
+             patch('sdk.client.DownloadManager', return_value=mock_download_manager):
 
             client = KlineClient(mock_config)
 

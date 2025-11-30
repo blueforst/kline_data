@@ -165,16 +165,16 @@ def test_strategy_priority():
 
 
 def test_fallback_scenario():
-    """测试回退场景：交易所不支持时才使用本地重采样"""
+    """测试回退场景：强制本地读取失败时自动提示"""
     console.print("\n" + "="*70, style="bold cyan")
-    console.print("测试：回退场景 - 本地重采样作为最后选择", style="bold cyan")
+    console.print("测试：回退场景 - 本地读取失败后的提示", style="bold cyan")
     console.print("="*70 + "\n", style="bold cyan")
     
     client = KlineClient()
     
     console.print("[bold yellow]场景说明：[/bold yellow]")
-    console.print("• 强制使用本地重采样策略（force_strategy='resample'）")
-    console.print("• 这种情况应该仅作为回退策略")
+    console.print("• 强制使用本地策略（force_strategy='local'）")
+    console.print("• 本地缺少数据时应改为从交易所下载")
     console.print()
     
     start_time = datetime(2024, 1, 1)
@@ -182,28 +182,28 @@ def test_fallback_scenario():
     interval = '4h'
     
     try:
-        console.print("尝试强制从本地重采样...")
+        console.print("尝试强制从本地读取...")
         df = client.get_kline(
             exchange=DEFAULT_EXCHANGE,
             symbol=DEFAULT_SYMBOL,
             start_time=start_time,
             end_time=end_time,
             interval=interval,
-            force_strategy='resample'  # 强制本地重采样
+            force_strategy='local'
         )
         
-        if not df.empty:
-            console.print(f"[bold yellow]⚠ 成功从本地重采样得到 {len(df)} 条数据[/bold yellow]")
-            console.print("  但正常情况下应该优先从交易所下载")
+        if df.empty:
+            console.print("[bold blue]ℹ 本地没有完整的数据（符合预期）[/bold blue]")
         else:
-            console.print("[bold blue]ℹ 本地没有可重采样的数据（符合预期）[/bold blue]")
+            console.print(f"[bold yellow]⚠ 读取到 {len(df)} 条本地数据[/bold yellow]")
+            console.print("  请确保这些数据是最新的")
         
         console.print()
         return True
         
     except Exception as e:
-        console.print(f"[bold blue]ℹ 无法从本地重采样: {e}[/bold blue]")
-        console.print("  这是正常的，因为本地可能没有合适的源数据")
+        console.print(f"[bold blue]ℹ 无法从本地读取: {e}[/bold blue]")
+        console.print("  这是正常的，因为本地可能没有合适的数据范围")
         console.print()
         return True
 
