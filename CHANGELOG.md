@@ -89,6 +89,12 @@
 
 ## [Unreleased]
 
+### Added
+- ➕ `kline download start` 新增 `-i all` 支持，可结合 `--start all` 一次性下载交易所支持的所有周期与历史时间
+
+### Changed
+- 🔁 下载任务管理命令迁移至 `kline download task`，统一归类到 download 子命令中
+
 ### Removed
 - 🗑️ 移除所有本地重采样代码和文档引用，所有时间周期统一从 CCXT 获取
 
@@ -114,7 +120,7 @@
   - 提供清晰的 "已取消" 提示信息
   
 - **影响命令**:
-  - `kline task list` (恢复任务时)
+  - `kline download task list` (恢复任务时)
   - `kline download` (下载数据时)
   
 - **技术实现**:
@@ -366,7 +372,7 @@ kline validate check --exchange binance --max
 #### ⭐ CLI下载任务管理 (2025-11-23)
 
 - **任务列表与交互式恢复**: 一步到位的任务管理
-  - `kline task list` - 默认交互式，显示任务后自动进入选择模式
+  - `kline download task list` - 默认交互式，显示任务后自动进入选择模式
   - 支持按状态筛选（pending/running/completed/failed/cancelled）
   - 使用 ↑↓ 方向键浏览任务列表
   - 回车键确认并自动恢复下载
@@ -374,13 +380,13 @@ kline validate check --exchange binance --max
   - `--no-interactive` 选项仅显示列表不交互
   
 - **任务管理命令**:
-  - `kline task list` - 列出任务并交互式选择（默认）
-  - `kline task list --status failed` - 筛选失败任务并选择
-  - `kline task list --no-interactive` - 仅显示列表
-  - `kline task resume <task-id>` - 恢复指定任务
-  - `kline task delete <task-id>` - 删除任务
-  - `kline task clean` - 批量清理已完成任务
-  - `kline task clean --system-files` - 清理系统隐藏文件
+  - `kline download task list` - 列出任务并交互式选择（默认）
+  - `kline download task list --status failed` - 筛选失败任务并选择
+  - `kline download task list --no-interactive` - 仅显示列表
+  - `kline download task resume <task-id>` - 恢复指定任务
+  - `kline download task delete <task-id>` - 删除任务
+  - `kline download task clean` - 批量清理已完成任务
+  - `kline download task clean --system-files` - 清理系统隐藏文件
   
 - **自动清理机制确认**: 
   - 已完成的任务自动删除元数据文件
@@ -391,16 +397,16 @@ kline validate check --exchange binance --max
 
 ```bash
 # 查看任务并交互式选择（默认）
-kline task list
+kline download task list
 
 # 查看失败的任务并选择
-kline task list --status failed
+kline download task list --status failed
 
 # 仅显示列表不交互
-kline task list --no-interactive
+kline download task list --no-interactive
 
 # 清理已完成的任务
-kline task clean
+kline download task clean
 ```
 
 **新增文件**:
@@ -421,7 +427,7 @@ kline task clean
   - 中断时自动将任务状态更新为 `cancelled`
   - 保存断点信息，支持后续恢复
   - 优雅退出，显示友好提示信息
-- **使用**: 按 Ctrl+C 中断下载后，使用 `kline task list` 即可看到并恢复任务
+- **使用**: 按 Ctrl+C 中断下载后，使用 `kline download task list` 即可看到并恢复任务
 
 #### 🐛 任务列表读取编码问题 (2025-11-23)
 
@@ -430,7 +436,7 @@ kline task clean
   - 在 `MetadataManager.list_download_tasks()` 中添加隐藏文件过滤
   - 跳过 `.` 和 `._` 开头的系统文件
   - 添加错误处理机制，跳过损坏的任务文件
-  - 新增 `kline task clean --system-files` 清理系统文件
+  - 新增 `kline download task clean --system-files` 清理系统文件
 - **影响**: 解决 `'utf-8' codec can't decode` 错误
 
 #### 🐛 下载任务自动清理 (2025-11-22)

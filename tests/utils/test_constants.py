@@ -85,7 +85,10 @@ class TestTimeframeEnum:
         assert '1m' in all_timeframes
         assert '1h' in all_timeframes
         assert '1d' in all_timeframes
-        assert len(all_timeframes) == 18  # 总共18个时间周期
+        assert '5s' not in all_timeframes
+        assert '15s' not in all_timeframes
+        assert '30s' not in all_timeframes
+        assert len(all_timeframes) == 15  # 更新后总共15个时间周期
     
 
 class TestTimeframeConstants:
@@ -100,6 +103,9 @@ class TestTimeframeConstants:
         assert TIMEFRAME_SECONDS['1h'] == 3600
         assert TIMEFRAME_SECONDS['1d'] == 86400
         assert TIMEFRAME_SECONDS['1w'] == 604800
+        assert '5s' not in TIMEFRAME_SECONDS
+        assert '15s' not in TIMEFRAME_SECONDS
+        assert '30s' not in TIMEFRAME_SECONDS
     
     def test_timeframe_to_pandas(self):
         """测试TIMEFRAME_TO_PANDAS常量"""
@@ -142,6 +148,9 @@ class TestHelperFunctions:
         # 无效的时间周期
         with pytest.raises(ValueError) as exc_info:
             validate_timeframe('invalid')
+        assert 'Invalid timeframe' in str(exc_info.value)
+        with pytest.raises(ValueError) as exc_info:
+            validate_timeframe('5s')
         assert 'Invalid timeframe' in str(exc_info.value)
     
     def test_validate_exchange(self):

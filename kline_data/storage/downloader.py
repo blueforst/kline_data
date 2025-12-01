@@ -344,7 +344,7 @@ class DataDownloader:
             task.errors.append("User interrupted (Ctrl+C)")
             task.updated_at = format_datetime(now_utc())
             self.metadata_mgr.save_download_task(task)
-            console.print(f"[保存] 任务已标记为取消状态，可使用 'kline task list' 恢复")
+            console.print(f"[保存] 任务已标记为取消状态，可使用 'kline download task list' 恢复")
             raise
             
         except Exception as e:

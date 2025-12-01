@@ -21,14 +21,13 @@ app = typer.Typer(
 console = Console()
 
 # 注册子命令组
-from .commands import download, query, config_cmd, server, validate, task
+from .commands import download, query, config_cmd, server, validate
 
 app.add_typer(download.app, name="download", help="数据下载和更新")
 app.add_typer(query.app, name="query", help="数据查询")
 app.add_typer(config_cmd.app, name="config", help="配置管理")
 app.add_typer(server.app, name="server", help="API服务")
 app.add_typer(validate.app, name="validate", help="数据完整性验证")
-app.add_typer(task.app, name="task", help="下载任务管理")
 
 
 @app.callback()

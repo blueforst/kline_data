@@ -29,9 +29,9 @@ def list_tasks(
     默认显示任务列表后，如有可恢复任务会自动进入交互式选择。
     
     示例:
-        kline task list                      # 列出任务并交互式选择
-        kline task list --status failed      # 筛选失败任务并交互式选择
-        kline task list --no-interactive     # 仅显示列表，不交互
+        kline download task list                      # 列出任务并交互式选择
+        kline download task list --status failed      # 筛选失败任务并交互式选择
+        kline download task list --no-interactive     # 仅显示列表，不交互
     """
     try:
         config = get_config()
@@ -281,7 +281,7 @@ def resume_task(
     恢复指定的下载任务
     
     示例:
-        kline task resume <task-id>
+        kline download task resume <task-id>
     """
     try:
         config = get_config()
@@ -321,8 +321,8 @@ def delete_task(
     删除下载任务
     
     示例:
-        kline task delete <task-id>
-        kline task delete <task-id> --force
+        kline download task delete <task-id>
+        kline download task delete <task-id> --force
     """
     try:
         config = get_config()
@@ -369,10 +369,10 @@ def clean_tasks(
     批量清理任务
     
     示例:
-        kline task clean                    # 清理已完成的任务
-        kline task clean --status failed    # 清理失败的任务
-        kline task clean --status all       # 清理所有任务
-        kline task clean --system-files     # 清理系统隐藏文件
+        kline download task clean                    # 清理已完成的任务
+        kline download task clean --status failed    # 清理失败的任务
+        kline download task clean --status all       # 清理所有任务
+        kline download task clean --system-files     # 清理系统隐藏文件
     """
     try:
         config = get_config()

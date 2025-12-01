@@ -128,6 +128,11 @@ class TestDownloadCommands:
         # 可能没有数据，但命令应该能执行
         assert result.exit_code == 0 or "错误" in result.stdout
 
+    def test_task_list_command(self):
+        """测试嵌套任务管理命令"""
+        result = runner.invoke(app, ["download", "task", "list", "--no-interactive"])
+        assert result.exit_code == 0 or "错误" in result.stdout
+
 
 class TestServerCommands:
     """测试服务命令"""

@@ -38,9 +38,6 @@ class Timeframe(str, Enum):
     
     # 秒级周期
     S1 = '1s'
-    S5 = '5s'
-    S15 = '15s'
-    S30 = '30s'
     
     # 分钟级周期
     M1 = '1m'
@@ -109,7 +106,7 @@ class Timeframe(str, Enum):
             
         Examples:
             >>> Timeframe.list_all()
-            ['1s', '5s', '15s', ..., '1d', '1w', '1M']
+            ['1s', '1m', '5m', ..., '1d', '1w', '1M']
         """
         return [tf.value for tf in cls]
     
@@ -122,9 +119,6 @@ class Timeframe(str, Enum):
 # 时间周期到秒数的映射
 TIMEFRAME_SECONDS: Final[Dict[str, int]] = {
     '1s': 1,
-    '5s': 5,
-    '15s': 15,
-    '30s': 30,
     '1m': 60,
     '3m': 180,
     '5m': 300,
@@ -144,9 +138,6 @@ TIMEFRAME_SECONDS: Final[Dict[str, int]] = {
 # 时间周期到pandas频率的映射
 TIMEFRAME_TO_PANDAS: Final[Dict[str, str]] = {
     '1s': '1s',
-    '5s': '5s',
-    '15s': '15s',
-    '30s': '30s',
     '1m': '1min',
     '3m': '3min',
     '5m': '5min',
