@@ -83,11 +83,22 @@ class DownloadClient:
 
         metadata = self.metadata_mgr.get_symbol_metadata(exchange, symbol)
 
+        # 仅统计当前周期的分区，避免多周期下载时累计到总量
+        interval_partitions = [
+            p for p in metadata.partitions
+            if getattr(p, "interval", "1s") == interval
+        ]
+        interval_records = sum(p.records for p in interval_partitions)
+        interval_size = sum(p.size_bytes for p in interval_partitions)
+
+        interval_data = metadata.intervals.get(interval)
+
         result = {
             "task_id": task_id,
-            "count": metadata.statistics.total_records if metadata.statistics else 0,
-            "start": metadata.data_range.start_date if metadata.data_range else None,
-            "end": metadata.data_range.end_date if metadata.data_range else None,
+            "count": interval_records,
+            "size_bytes": interval_size,
+            "start": interval_data.start_timestamp if interval_data else None,
+            "end": interval_data.end_timestamp if interval_data else None,
         }
         return result
     

@@ -184,11 +184,30 @@ class QueryClient:
         if df.empty:
             return df
 
-        before_timestamp = datetime_to_timestamp(before_time)
-        df = df[df['timestamp'] < before_timestamp]
+        # 记录原始timestamp类型，用于在需要时恢复
+        original_timestamp_numeric = pd.api.types.is_numeric_dtype(df['timestamp'])
+
+        # 确保timestamp列为UTC datetime，避免与int类型比较导致报错
+        if not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
+            if pd.api.types.is_numeric_dtype(df['timestamp']):
+                df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
+            else:
+                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
+        elif df['timestamp'].dt.tz is None:
+            df['timestamp'] = df['timestamp'].dt.tz_localize('UTC')
+
+        # 按时间排序后再做过滤/截断，确保返回结果有序且取到最新的limit条
+        df = df.sort_values('timestamp')
+        df = df[df['timestamp'] < before_time]
 
         if len(df) > limit:
             df = df.tail(limit)
+
+        # 如果原始数据的timestamp是数值（ms），在过滤后恢复为ms整数，保持对外接口一致
+        if original_timestamp_numeric and not df.empty:
+            df['timestamp'] = df['timestamp'].astype('int64') // 1_000_000
+
+        df = df.reset_index(drop=True)
 
         return df
     

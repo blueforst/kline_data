@@ -124,7 +124,11 @@ def _run_download_with_progress(
 
     console.print(f"\n[green]✓[/green] {interval} 下载完成!")
     console.print(f"数据量: [bold]{result.get('count', 0):,}[/bold] 条")
-    console.print(f"时间范围: {result.get('start')} 到 {result.get('end')}")
+    console.print(
+        "时间范围: "
+        f"{format_time_for_display(result.get('start'))} "
+        f"到 {format_time_for_display(result.get('end'))}"
+    )
     result["interval"] = interval
     return result
 

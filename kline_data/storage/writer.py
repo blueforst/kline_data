@@ -57,6 +57,8 @@ class ParquetWriter:
         Returns:
             PartitionInfo: 分区信息
         """
+        df = self._filter_summary_rows(df, interval)
+
         # 确保目录存在
         file_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -134,6 +136,7 @@ class ParquetWriter:
             # 去重并排序
             combined_df = combined_df.drop_duplicates(subset=['timestamp'], keep='last')
             combined_df = combined_df.sort_values('timestamp').reset_index(drop=True)
+            combined_df = self._filter_summary_rows(combined_df, interval)
             
             # 写回文件
             return self.write(combined_df, file_path, interval)
@@ -259,6 +262,47 @@ class ParquetWriter:
             # 无法提取，返回当前UTC年月
             now = now_utc()
             return now.year, now.month
+    
+    def _filter_summary_rows(self, df: pd.DataFrame, interval: str) -> pd.DataFrame:
+        """
+        移除可能混入的月度汇总行（仅对1m数据启用）
+        """
+        if df is None or df.empty:
+            return df
+        if interval != '1m':
+            return df
+        required_cols = {'timestamp', 'volume', 'close'}
+        if not required_cols.issubset(df.columns):
+            return df
+
+        # 确保时间为UTC，便于排序和对齐
+        if not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
+        elif df['timestamp'].dt.tz is None:
+            df['timestamp'] = df['timestamp'].dt.tz_localize('UTC')
+
+        if len(df) < 6:
+            return df
+
+        sorted_df = df.sort_values('timestamp').reset_index(drop=True)
+        head = sorted_df.head(6)
+        vol_avg = head['volume'].iloc[1:6].mean(skipna=True)
+        close_avg = head['close'].iloc[1:6].mean(skipna=True)
+
+        # 均值缺失时跳过过滤
+        if pd.isna(vol_avg) or pd.isna(close_avg):
+            return sorted_df
+
+        first = head.iloc[0]
+        volume_anomaly = first['volume'] > vol_avg * 100
+        price_anomaly = False
+        if close_avg != 0:
+            price_anomaly = abs(first['close'] - close_avg) / abs(close_avg) > 0.1
+
+        if volume_anomaly or price_anomaly:
+            return sorted_df.iloc[1:].reset_index(drop=True)
+
+        return sorted_df
     
     def verify_integrity(self, file_path: Path, expected_checksum: str) -> bool:
         """

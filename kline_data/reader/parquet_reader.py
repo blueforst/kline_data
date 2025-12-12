@@ -151,6 +151,7 @@ class ParquetReader:
                 elif df['timestamp'].dt.tz is None:
                     df['timestamp'] = df['timestamp'].dt.tz_localize('UTC')
             
+            df = self._drop_monthly_summary_row(df, self._infer_interval_from_path(file_path))
             return df
         except Exception as e:
             console.print(f"Error reading {file_path}: {e}")
@@ -200,6 +201,7 @@ class ParquetReader:
                     (df['timestamp'] <= end_time)
                 ]
             
+            df = self._drop_monthly_summary_row(df, self._infer_interval_from_path(file_path))
             return df
         except Exception as e:
             console.print(f"Error reading {file_path}: {e}")
@@ -239,8 +241,9 @@ class ParquetReader:
         files = []
         
         # 遍历年份
-        current_date = start_time.replace(day=1)
-        end_date = end_time.replace(day=1)
+        # 将时间归一到每月第一天零点，避免因为时分秒导致跨月判断错误
+        current_date = start_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = end_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         
         while current_date <= end_date:
             year_dir = base_path / str(current_date.year)
@@ -264,6 +267,54 @@ class ParquetReader:
                 )
         
         return files
+    
+    def _infer_interval_from_path(self, file_path: Path) -> Optional[str]:
+        """从路径中尝试解析周期，例如 .../symbol/1m/2023/01/data.parquet"""
+        parts = file_path.parts
+        try:
+            raw_idx = parts.index('raw')
+            # 结构: .../raw/exchange/symbol/interval/...
+            return parts[raw_idx + 3]
+        except (ValueError, IndexError):
+            return None
+
+    def _drop_monthly_summary_row(self, df: pd.DataFrame, interval: Optional[str]) -> pd.DataFrame:
+        """
+        过滤掉首行的月度汇总/统计行（仅对1m启用）
+        """
+        if df is None or df.empty or interval != '1m':
+            return df
+
+        required_cols = {'timestamp', 'volume', 'close'}
+        if not required_cols.issubset(df.columns):
+            return df
+        if len(df) < 6:
+            return df
+
+        # 保证时间列规范，便于排序和比较
+        if not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
+        elif df['timestamp'].dt.tz is None:
+            df['timestamp'] = df['timestamp'].dt.tz_localize('UTC')
+
+        sorted_df = df.sort_values('timestamp').reset_index(drop=True)
+        head = sorted_df.head(6)
+        vol_avg = head['volume'].iloc[1:6].mean(skipna=True)
+        close_avg = head['close'].iloc[1:6].mean(skipna=True)
+
+        if pd.isna(vol_avg) or pd.isna(close_avg):
+            return sorted_df
+
+        first = head.iloc[0]
+        volume_anomaly = first['volume'] > vol_avg * 100
+        price_anomaly = False
+        if close_avg != 0:
+            price_anomaly = abs(first['close'] - close_avg) / abs(close_avg) > 0.1
+
+        if volume_anomaly or price_anomaly:
+            return sorted_df.iloc[1:].reset_index(drop=True)
+
+        return sorted_df
     
     def _generate_cache_key(
         self,
