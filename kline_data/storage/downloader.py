@@ -221,6 +221,51 @@ class DataDownloader:
             console.print(f"Failed to get earliest timestamp: {e}")
             return None
     
+    def _validate_symbol(self) -> bool:
+        """
+        快速验证交易对是否有效
+
+        使用交易所的元数据 API 来快速验证符号是否存在，
+        避免等待数据请求超时。
+
+        Returns:
+            bool: 符号是否有效
+        """
+        try:
+            # 使用 load_markets 获取市场列表（通常很快且缓存）
+            # 这比 fetch_ohlcv 快得多
+            markets = self.exchange.load_markets()
+
+            # 检查符号是否在市场列表中
+            if self.symbol not in markets:
+                console.print(f"[red]Error: Symbol '{self.symbol}' not found on {self.exchange_name}[/red]")
+                return False
+
+            # 验证该符号是否支持 OHLCV 数据
+            market = markets[self.symbol]
+            if not market.get('active', False):
+                console.print(f"[red]Error: Symbol '{self.symbol}' is not active on {self.exchange_name}[/red]")
+                return False
+
+            # 检查是否支持该周期
+            if hasattr(self.exchange, 'timeframes') and self.interval not in self.exchange.timeframes:
+                console.print(f"[red]Error: {self.exchange_name} doesn't support {self.interval} timeframe[/red]")
+                return False
+
+            return True
+
+        except ccxt.BadSymbol:
+            console.print(f"[red]Error: Invalid symbol '{self.symbol}' on {self.exchange_name}[/red]")
+            return False
+        except (ccxt.NetworkError, ccxt.ExchangeNotAvailable, ccxt.RequestTimeout):
+            # 网络错误时保守处理，允许继续
+            console.print(f"[yellow]Warning: Network error during symbol validation, skipping validation[/yellow]")
+            return True
+        except Exception as e:
+            # 其他未知错误，保守起见允许继续
+            console.print(f"[yellow]Warning: Error during symbol validation: {e}, skipping validation[/yellow]")
+            return True
+
     def download_range(
         self,
         start_time: datetime,
@@ -231,17 +276,27 @@ class DataDownloader:
     ) -> str:
         """
         下载时间范围内的数据
-        
+
         Args:
             start_time: 开始时间
             end_time: 结束时间
             checkpoint: 断点时间戳
             task_id: 任务ID
             force: 是否强制重新下载（删除现有数据）
-            
+
         Returns:
             str: 任务ID
+
+        Raises:
+            ValueError: 如果符号无效
         """
+        # 快速验证符号是否有效
+        if not self._validate_symbol():
+            raise ValueError(
+                f"Invalid symbol '{self.symbol}' for exchange '{self.exchange_name}'. "
+                f"Please check if the symbol exists and is correctly formatted (e.g., 'BTC/USDT')."
+            )
+
         # 创建任务
         if task_id is None:
             task_id = str(uuid.uuid4())
