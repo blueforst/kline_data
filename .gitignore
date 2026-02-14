@@ -48,6 +48,7 @@ logs/
 !logs/.gitkeep
 
 # Config
+kline_data/config/config.yaml
 config/config.local.yaml
 config/*.local.yaml
 .env

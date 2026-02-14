@@ -10,7 +10,7 @@ from rich.table import Table
 import pandas as pd
 
 from ...sdk import KlineClient
-from ...utils.constants import Timeframe
+from ...utils.constants import Timeframe, get_default_exchange
 from ...utils.timezone import format_time_for_display, format_time_for_display, now_utc
 
 app = typer.Typer(help="数据查询命令")
@@ -20,7 +20,7 @@ console = Console()
 @app.command("kline")
 def query_kline(
     symbol: str = typer.Option(..., "--symbol", "-s", help="交易对符号"),
-    exchange: str = typer.Option("binance", "--exchange", "-e", help="交易所名称"),
+    exchange: Optional[str] = typer.Option(None, "--exchange", "-e", help="交易所名称"),
     timeframe: str = typer.Option("1m", "--timeframe", "-t", help="时间周期 (1s/1m/5m/15m/1h/4h/1d等)"),
     start: Optional[str] = typer.Option(None, "--start", help="开始时间 (YYYY-MM-DD HH:MM:SS)"),
     end: Optional[str] = typer.Option(None, "--end", help="结束时间 (YYYY-MM-DD HH:MM:SS)"),
@@ -37,6 +37,7 @@ def query_kline(
         kline query kline -s BTC/USDT -t 1h -i sma_20,ema_50 -o output.csv
     """
     try:
+        exchange = exchange or get_default_exchange()
         # 解析时间
         start_time = None
         end_time = None
@@ -83,7 +84,7 @@ def query_kline(
 @app.command("latest")
 def query_latest(
     symbol: str = typer.Option(..., "--symbol", "-s", help="交易对符号"),
-    exchange: str = typer.Option("binance", "--exchange", "-e", help="交易所名称"),
+    exchange: Optional[str] = typer.Option(None, "--exchange", "-e", help="交易所名称"),
     timeframe: str = typer.Option("1m", "--timeframe", "-t", help="时间周期"),
     count: int = typer.Option(10, "--count", "-n", help="返回数量"),
 ):
@@ -94,6 +95,7 @@ def query_latest(
         kline query latest --symbol BTC/USDT --timeframe 1m --count 5
     """
     try:
+        exchange = exchange or get_default_exchange()
         console.print(f"[cyan]查询最新数据...[/cyan]")
         
         with KlineClient() as client:
@@ -117,7 +119,7 @@ def query_latest(
 @app.command("range")
 def query_range(
     symbol: str = typer.Option(..., "--symbol", "-s", help="交易对符号"),
-    exchange: str = typer.Option("binance", "--exchange", "-e", help="交易所名称"),
+    exchange: Optional[str] = typer.Option(None, "--exchange", "-e", help="交易所名称"),
 ):
     """
     查询数据范围
@@ -126,6 +128,7 @@ def query_range(
         kline query range --symbol BTC/USDT
     """
     try:
+        exchange = exchange or get_default_exchange()
         with KlineClient() as client:
             metadata = client.get_metadata(symbol=symbol, exchange=exchange)
             
@@ -201,7 +204,7 @@ def list_symbols(
 @app.command("stats")
 def query_stats(
     symbol: str = typer.Option(..., "--symbol", "-s", help="交易对符号"),
-    exchange: str = typer.Option("binance", "--exchange", "-e", help="交易所名称"),
+    exchange: Optional[str] = typer.Option(None, "--exchange", "-e", help="交易所名称"),
     timeframe: str = typer.Option("1d", "--timeframe", "-t", help="时间周期"),
     period: int = typer.Option(30, "--period", "-p", help="统计周期（天）"),
 ):
@@ -212,6 +215,7 @@ def query_stats(
         kline query stats --symbol BTC/USDT --period 30
     """
     try:
+        exchange = exchange or get_default_exchange()
         console.print(f"[cyan]查询统计信息...[/cyan]")
         
         with KlineClient() as client:

@@ -1,0 +1,70 @@
+system:
+  version: "1.0.0"
+  log_level: "INFO"
+  log_path: "./logs"
+
+storage:
+  root_path: "./data"
+  separate_by_exchange: true
+  separate_by_symbol: true
+  format: "parquet"
+  compression: "snappy"
+  partition:
+    enabled: true
+    granularity: "month"
+  retention:
+    enabled: false
+    days: 365
+
+ccxt:
+  proxy:
+    http: null
+    https: null
+  rate_limit:
+    enabled: true
+    requests_per_minute: 1200
+  retry:
+    max_attempts: 3
+    backoff_factor: 2
+    timeout: 30
+  exchanges:
+    - binance
+    - okx
+    - bybit
+
+memory:
+  max_usage_mb: 1024
+  chunk_size: 100000
+  cache:
+    enabled: true
+    max_size_mb: 512
+    ttl_seconds: 3600
+
+indicators:
+  defaults:
+    ma_periods: [5, 10, 20, 50, 200]
+    ema_periods: [12, 26]
+    boll_period: 20
+    boll_std: 2
+    rsi_period: 14
+    macd: [12, 26, 9]
+  batch_compute: true
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  auth:
+    enabled: false
+    api_key: ""
+  rate_limit:
+    enabled: true
+    requests_per_minute: 1000
+  cors:
+    enabled: true
+    origins: ["*"]
+
+cli:
+  default_exchange: "binance"
+  default_symbol: "BTC/USDT"
+  output_format: "table"

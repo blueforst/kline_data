@@ -1,6 +1,8 @@
 """测试全局常量模块"""
 
 import pytest
+from types import SimpleNamespace
+import kline_data.config.manager as config_manager
 from kline_data.utils.constants import (
     Timeframe,
     TIMEFRAME_SECONDS,
@@ -32,6 +34,8 @@ from kline_data.utils.constants import (
     get_timeframe_seconds,
     validate_timeframe,
     validate_exchange,
+    get_supported_exchanges,
+    get_default_exchange,
     validate_symbol,
     validate_ohlcv_aggregation_rule,
     validate_validation_method,
@@ -164,6 +168,33 @@ class TestHelperFunctions:
         with pytest.raises(ValueError) as exc_info:
             validate_exchange('invalid_exchange')
         assert 'Unsupported exchange' in str(exc_info.value)
+
+    def test_get_supported_exchanges_from_config(self, monkeypatch):
+        mock_config = SimpleNamespace(
+            ccxt=SimpleNamespace(exchanges=['kraken', 'coinbase']),
+            cli=SimpleNamespace(default_exchange='kraken'),
+        )
+        monkeypatch.setattr(config_manager, 'load_config', lambda: mock_config)
+        assert get_supported_exchanges() == ['kraken', 'coinbase']
+
+    def test_get_default_exchange_from_config(self, monkeypatch):
+        mock_config = SimpleNamespace(
+            ccxt=SimpleNamespace(exchanges=['kraken', 'coinbase']),
+            cli=SimpleNamespace(default_exchange='kraken'),
+        )
+        monkeypatch.setattr(config_manager, 'load_config', lambda: mock_config)
+        assert get_default_exchange() == 'kraken'
+
+    def test_validate_exchange_uses_configured_list(self, monkeypatch):
+        mock_config = SimpleNamespace(
+            ccxt=SimpleNamespace(exchanges=['kraken', 'coinbase']),
+            cli=SimpleNamespace(default_exchange='kraken'),
+        )
+        monkeypatch.setattr(config_manager, 'load_config', lambda: mock_config)
+
+        validate_exchange('kraken')
+        with pytest.raises(ValueError):
+            validate_exchange('binance')
 
 
 class TestOtherConstants:

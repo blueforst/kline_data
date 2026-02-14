@@ -400,11 +400,40 @@ def validate_exchange(exchange: str) -> None:
     Raises:
         ValueError: 如果交易所不支持
     """
-    if exchange not in SUPPORTED_EXCHANGES:
+    supported_exchanges = get_supported_exchanges()
+    if exchange not in supported_exchanges:
         raise ValueError(
             f"Unsupported exchange: {exchange}. "
-            f"Supported exchanges: {', '.join(SUPPORTED_EXCHANGES)}"
+            f"Supported exchanges: {', '.join(supported_exchanges)}"
         )
+
+
+def get_supported_exchanges() -> List[str]:
+    try:
+        from ..config.manager import load_config
+
+        config = load_config()
+        exchanges = list(config.ccxt.exchanges)
+        if exchanges:
+            return exchanges
+    except Exception:
+        pass
+
+    return SUPPORTED_EXCHANGES.copy()
+
+
+def get_default_exchange() -> str:
+    try:
+        from ..config.manager import load_config
+
+        config = load_config()
+        default_exchange = config.cli.default_exchange
+        if default_exchange:
+            return default_exchange
+    except Exception:
+        pass
+
+    return DEFAULT_EXCHANGE
 
 
 def validate_symbol(symbol: str) -> None:
@@ -486,6 +515,8 @@ __all__ = [
     'SUPPORTED_EXCHANGES',
     'DEFAULT_EXCHANGE',
     'DEFAULT_SYMBOL',
+    'get_supported_exchanges',
+    'get_default_exchange',
     'TEST_SYMBOLS',
     'DEMO_SYMBOL',
 

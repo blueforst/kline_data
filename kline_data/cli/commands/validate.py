@@ -13,6 +13,7 @@ from ...sdk import KlineClient
 from ...storage.validator import DataValidator
 from ...storage.metadata_manager import MetadataManager
 from ...config import get_config
+from ...utils.constants import get_default_exchange
 
 app = typer.Typer(help="数据完整性验证命令")
 console = Console()
@@ -467,7 +468,7 @@ def _perform_max_check(
 @app.command("quality")
 def check_quality(
     symbol: str = typer.Option(..., "--symbol", "-s", help="交易对符号"),
-    exchange: str = typer.Option("binance", "--exchange", "-e", help="交易所名称"),
+    exchange: Optional[str] = typer.Option(None, "--exchange", "-e", help="交易所名称"),
     interval: str = typer.Option("1s", "--interval", "-i", help="时间间隔"),
 ):
     """
@@ -478,6 +479,7 @@ def check_quality(
         kline validate quality -s ETH/USDT -e binance
     """
     try:
+        exchange = exchange or get_default_exchange()
         console.print(f"[cyan]检查数据质量...[/cyan]")
         console.print(f"交易对: [bold]{symbol}[/bold]")
         console.print(f"交易所: [bold]{exchange}[/bold]\n")
@@ -559,7 +561,7 @@ def check_quality(
 @app.command("repair")
 def repair_data(
     symbol: str = typer.Option(..., "--symbol", "-s", help="交易对符号"),
-    exchange: str = typer.Option("binance", "--exchange", "-e", help="交易所名称"),
+    exchange: Optional[str] = typer.Option(None, "--exchange", "-e", help="交易所名称"),
     auto: bool = typer.Option(False, "--auto", "-a", help="自动修复（重新下载缺失数据）"),
     dry_run: bool = typer.Option(False, "--dry-run", help="仅显示需要修复的内容，不执行"),
 ):
@@ -571,6 +573,7 @@ def repair_data(
         kline validate repair --symbol BTC/USDT --auto
     """
     try:
+        exchange = exchange or get_default_exchange()
         console.print(f"[cyan]检查并修复数据...[/cyan]")
         console.print(f"交易对: [bold]{symbol}[/bold]")
         console.print(f"交易所: [bold]{exchange}[/bold]\n")

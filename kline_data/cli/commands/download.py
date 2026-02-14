@@ -9,7 +9,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRe
 from rich.table import Table
 
 from ...sdk import KlineClient
-from ...utils.constants import Timeframe
+from ...utils.constants import Timeframe, get_default_exchange
 from ...utils.timezone import format_time_for_display, now_utc
 
 app = typer.Typer(help="数据下载和更新命令")
@@ -158,7 +158,7 @@ def _print_summary(results: List[dict]) -> None:
 @app.command("start")
 def download_data(
     symbol: str = typer.Option(..., "--symbol", "-s", help="交易对符号，如 BTC/USDT"),
-    exchange: str = typer.Option("binance", "--exchange", "-e", help="交易所名称"),
+    exchange: Optional[str] = typer.Option(None, "--exchange", "-e", help="交易所名称"),
     start: str = typer.Option(..., "--start", help="开始时间 (YYYY-MM-DD 或 'all' 表示从交易所最早可用时间开始)"),
     end: Optional[str] = typer.Option(None, "--end", help="结束时间 (YYYY-MM-DD)，不指定则到当前"),
     interval: str = typer.Option("1s", "--interval", "-i", help="时间周期 (1s, 1m, 5m, 15m, 30m, 1h, 4h, 1d等，或'all'表示下载所有周期)"),
@@ -177,6 +177,7 @@ def download_data(
         kline download start -s BTC/USDT --start all -i all  # 下载所有可用时间和周期
     """
     try:
+        exchange = exchange or get_default_exchange()
         start_option = start.strip()
         interval_option = interval.strip()
         intervals = _resolve_intervals(interval_option)
@@ -264,7 +265,7 @@ def download_data(
 @app.command("update")
 def update_data(
     symbol: str = typer.Option(..., "--symbol", "-s", help="交易对符号"),
-    exchange: str = typer.Option("binance", "--exchange", "-e", help="交易所名称"),
+    exchange: Optional[str] = typer.Option(None, "--exchange", "-e", help="交易所名称"),
     interval: str = typer.Option("1s", "--interval", "-i", help="时间周期 (1s, 1m, 5m, 15m, 30m, 1h, 4h, 1d等)"),
 ):
     """
@@ -276,6 +277,7 @@ def update_data(
         kline download update -s BTC/USDT -i 4h
     """
     try:
+        exchange = exchange or get_default_exchange()
         console.print(f"[cyan]更新数据...[/cyan]")
         console.print(f"交易对: [bold]{symbol}[/bold]")
         console.print(f"交易所: [bold]{exchange}[/bold]")
@@ -353,7 +355,7 @@ app.add_typer(task_commands.app, name="task", help="下载任务管理")
 @app.command("status")
 def check_status(
     symbol: str = typer.Option(..., "--symbol", "-s", help="交易对符号"),
-    exchange: str = typer.Option("binance", "--exchange", "-e", help="交易所名称"),
+    exchange: Optional[str] = typer.Option(None, "--exchange", "-e", help="交易所名称"),
 ):
     """
     检查数据状态
@@ -362,6 +364,7 @@ def check_status(
         kline download status --symbol BTC/USDT
     """
     try:
+        exchange = exchange or get_default_exchange()
         with KlineClient() as client:
             metadata = client.get_metadata(symbol=symbol, exchange=exchange)
             
